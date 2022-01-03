@@ -7,7 +7,7 @@ let package = Package(
     name: "AsyncExtensions",
     platforms: [
             .iOS(.v13),
-            .macOS(.v10_15),
+            .macOS(.v11),
             .tvOS(.v13),
             .watchOS(.v6)
         ],
@@ -26,9 +26,11 @@ let package = Package(
         // Targets can depend on other targets in this package, and on products in packages this package depends on.
         .target(
             name: "AsyncExtensions",
-            dependencies: []),
+            dependencies: [],
+            path: "Sources"),
         .testTarget(
             name: "AsyncExtensionsTests",
-            dependencies: ["AsyncExtensions"]),
+            dependencies: ["AsyncExtensions"],
+            path: "Tests"),
     ]
 )
