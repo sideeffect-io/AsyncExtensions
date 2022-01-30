@@ -1,0 +1,49 @@
+name: Tests
+
+on: [push]
+
+jobs:
+  iOS:
+    name: "iOS"
+    runs-on: macos-11
+    steps:
+    - uses: actions/checkout@v2
+    - name: Generate Xcode project
+      run: swift package generate-xcodeproj
+    - name: Run Unit Tests
+      run: set -o pipefail && xcodebuild -project AsyncExtensions.xcodeproj -scheme AsyncExtensions-Package -enableCodeCoverage YES -sdk iphonesimulator -destination "name=iPhone 13" test | xcpretty -c -r html --output logs/iOS.html
+    - name: Upload code coverage to Codecov.io
+      run: bash <(curl -s https://codecov.io/bash) -t ${{ secrets.CODECOV_IO_TOKEN }}
+    - name: Upload build artifacts to Github
+      uses: actions/upload-artifact@v1
+      with:
+        name: build-logs-${{ github.run_id }}
+        path: logs
+  macOS:
+    name: "macOS"
+    runs-on: macos-11
+    steps:
+    - uses: actions/checkout@v2
+    - name: Generate Xcode project
+      run: swift package generate-xcodeproj
+    - name: Run Unit Tests
+      run: set -o pipefail && xcodebuild -project AsyncExtensions.xcodeproj -scheme AsyncExtensions-Package -enableCodeCoverage NO -sdk macosx -destination "arch=x86_64" test | xcpretty -c -r html --output logs/macOS.html
+    - name: Upload build artifacts to Github
+      uses: actions/upload-artifact@v1
+      with:
+        name: build-logs-${{ github.run_id }}
+        path: logs
+  tvOS:
+    name: "tvOS"
+    runs-on: macos-11
+    steps:
+    - uses: actions/checkout@v2
+    - name: Generate Xcode project
+      run: swift package generate-xcodeproj
+    - name: Run Unit Tests
+      run: set -o pipefail && xcodebuild -project AsyncExtensions.xcodeproj -scheme AsyncExtensions-Package -enableCodeCoverage NO -sdk appletvsimulator -destination "name=Apple TV" test | xcpretty -c -r html --output logs/tvOS.html
+    - name: Upload build artifacts to Github
+      uses: actions/upload-artifact@v1
+      with:
+        name: build-logs-${{ github.run_id }}
+        path: logs
