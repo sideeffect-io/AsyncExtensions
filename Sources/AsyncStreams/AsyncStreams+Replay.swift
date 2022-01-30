@@ -13,35 +13,13 @@ public extension AsyncStreams {
     /// When the `bufferSize` is outreached the oldest value is dropped.
     ///
     /// ```
-    /// let subject = AsyncStreams.Replay<Int>(bufferSize: 3)
+    /// let replay = AsyncStreams.Replay<Int>(bufferSize: 3)
     ///
-    /// (1...5).forEach { subject.send($0) }
+    /// (1...5).forEach { replay.send($0) }
     ///
-    /// for try await element in subject {
-    ///     print(element)
+    /// for try await element in replay {
+    ///     print(element) // will print 3, 4, 5
     /// }
-    ///
-    /// // will print:
-    /// 3
-    /// 4
-    /// 5
-    ///
-    /// ...
-    ///
-    /// let subject = AsyncStreams.Replay<Int>(bufferSize: 0)
-    ///
-    /// Task {
-    ///     for try await element in subject {
-    ///         print(element)
-    ///     }
-    /// }
-    ///
-    /// subject.send(1)
-    ///
-    /// // will print:
-    /// 3
-    /// 4
-    /// 5
     /// ```
     typealias Replay<Element> = AsyncReplayStream<Element>
 }

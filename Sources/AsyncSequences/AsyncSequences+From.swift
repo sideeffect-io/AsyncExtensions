@@ -8,6 +8,24 @@
 public extension AsyncSequences {
     /// `From` is an AsyncSequence that outputs elements from a traditional Sequence.
     /// If the parent task is cancelled while iterating then the iteration finishes.
+    ///
+    /// ```
+    /// let fromSequence = AsyncSequences.From([1, 2, 3, 4, 5])
+    ///
+    /// for await element in fromSequence {
+    ///     print(element) // will print 1 2 3 4 5
+    /// }
+    /// ```
+    ///
+    /// A variation offers to set an interval of time between each element.
+    ///
+    /// ```
+    /// let fromSequence = AsyncSequences.From([1, 2, 3, 4, 5], interval: .milliSeconds(10))
+    ///
+    /// for await element in fromSequence {
+    ///     print(element) // will print 1 2 3 4 5 with an interval of 10ms between elements
+    /// }
+    /// ```
     typealias From<Base: Swift.Sequence> = AsyncFromSequence<Base>
 }
 

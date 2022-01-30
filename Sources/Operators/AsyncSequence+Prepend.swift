@@ -9,7 +9,7 @@ public extension AsyncSequence {
     /// Prepends an element to the upstream async sequence.
     ///
     /// ```
-    /// let sourceSequence = [1, 2, 3].asyncElements
+    /// let sourceSequence = AsyncSequences.From([1, 2, 3])
     /// let prependSequence = sourceSequence.prepend(0)
     ///
     /// for try await element in prependSequence {

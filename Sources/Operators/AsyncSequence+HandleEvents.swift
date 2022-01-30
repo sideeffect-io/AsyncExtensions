@@ -5,11 +5,13 @@
 //  Created by Thibault Wittemberg on 31/12/2021.
 //
 
+import Combine
+
 public extension AsyncSequence {
-    /// Executes the `receiveElement` closure for each element of the upstream async sequence.
+    /// Performs the specified closures when async sequences events occur.
     ///
     /// ```
-    /// let sourceSequence = [1, 2, 3, 4, 5].asyncElements
+    /// let sourceSequence = AsyncSequences.From([1, 2, 3, 4, 5])
     /// let handledSequence = sourceSequence.handleEvents {
     ///    print("Begin looping")
     /// } onElement: { element in
@@ -30,7 +32,6 @@ public extension AsyncSequence {
     /// // Element is 4
     /// // Element is 5
     /// // finished
-    ///
     /// ```
     ///
     /// - Parameters:

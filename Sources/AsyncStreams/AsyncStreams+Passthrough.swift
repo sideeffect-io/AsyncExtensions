@@ -8,25 +8,28 @@
 import Foundation
 
 public extension AsyncStreams {
-    /// A `Passthrough`is an async sequence in which one can send values over time.
+    /// A `Passthrough` is an async sequence in which one can send values over time.
     ///
     /// ```
-    /// let subject = AsyncStreams.Passthrough<Int>()
+    /// let passthrough = AsyncStreams.Passthrough<Int>()
     ///
     /// Task {
-    ///     for try await element in subject {
-    ///         print(element)
+    ///     for try await element in passthrough {
+    ///         print(element) // will print 1 2
     ///     }
     /// }
     ///
-    /// subject.send(1)
-    /// subject.send(2)
+    /// Task {
+    ///     for try await element in passthrough {
+    ///         print(element) // will print 1 2
+    ///     }
+    /// }
     ///
-    /// // will print:
-    /// 1
-    /// 2
+    /// .. later in the application flow
+    ///
+    /// passthrough.send(1)
+    /// passthrough.send(2)
     /// ```
-    ///
     typealias Passthrough<Element> = AsyncPassthroughStream<Element>
 }
 

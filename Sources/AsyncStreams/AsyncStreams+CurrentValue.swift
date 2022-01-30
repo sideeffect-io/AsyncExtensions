@@ -13,30 +13,25 @@ public extension AsyncStreams {
     /// The current value is replayed in any new async for in loops.
     ///
     /// ```
-    /// let subject = AsyncStreams.CurrentValue<Int>(5)
-    ///
-    /// for try await element in subject {
-    ///     print(element)
-    /// }
-    ///
-    /// // will print:
-    /// 1
-    ///
-    /// ...
-    ///
-    /// let subject = AsyncStreams.CurrentValue<Int>(5)
+    /// let currentValue = AsyncStreams.CurrentValue<Int>(1)
     ///
     /// Task {
-    ///     for try await element in subject {
-    ///         print(element)
+    ///     for try await element in passthrough {
+    ///         print(element) // will print 1 2
     ///     }
     /// }
     ///
-    /// subject.send(1)
+    /// Task {
+    ///     for try await element in passthrough {
+    ///         print(element) // will print 1 2
+    ///     }
+    /// }
     ///
-    /// // will print:
-    /// 5
-    /// 1
+    /// .. later in the application flow
+    ///
+    /// currentValue.send(2)
+    ///
+    /// print(currentValue.element) // will print 2
     /// ```
     typealias CurrentValue<Element> = AsyncCurrentValueStream<Element>
 }

@@ -11,7 +11,7 @@ public extension AsyncSequences {
     /// and emits a tuple to the client. If any Async Sequence ends successfully or fails with an error, so too does the zipped
     /// Async Sequence.
     ///
-    ///  ```
+    /// ```
     /// let asyncSequence1 = [1, 2, 3, 4, 5].asyncElements
     /// let asyncSequence2 = ["1", "2", "3", "4", "5"].asyncElements
     ///
@@ -20,7 +20,7 @@ public extension AsyncSequences {
     /// for try await element in zippedAsyncSequence {
     ///     print(element) // will print -> (1, "1") (2, "2") (3, "3") (4, "4") (5, "5")
     /// }
-    ///  ```
+    /// ```
     typealias Zip2<UpstreamAsyncSequenceA: AsyncSequence,
                    UpstreamAsyncSequenceB: AsyncSequence> = AsyncZip2Sequence<UpstreamAsyncSequenceA,
                                                                               UpstreamAsyncSequenceB>
@@ -29,7 +29,7 @@ public extension AsyncSequences {
     /// and emits a tuple to the client. If any Async Sequence ends successfully or fails with an error, so too does the zipped
     /// Async Sequence.
     ///
-    ///  ```
+    /// ```
     /// let asyncSequence1 = [1, 2, 3, 4, 5].asyncElements
     /// let asyncSequence2 = ["1", "2", "3", "4", "5"].asyncElements
     /// let asyncSequence3 = [true, false, true, false, true].asyncElements
@@ -39,7 +39,7 @@ public extension AsyncSequences {
     /// for try await element in zippedAsyncSequence {
     ///     print(element) // will print -> (1, "1", true) (2, "2", false) (3, "3", true) (4, "4", false) (5, "5", true)
     /// }
-    ///  ```
+    /// ```
     typealias Zip3<UpstreamAsyncSequenceA: AsyncSequence,
                    UpstreamAsyncSequenceB: AsyncSequence,
                    UpstreamAsyncSequenceC: AsyncSequence> = AsyncZip3Sequence<UpstreamAsyncSequenceA,
@@ -50,7 +50,7 @@ public extension AsyncSequences {
     /// and emits an array to the client. If any Async Sequence ends successfully or fails with an error, so too does the zipped
     /// Async Sequence.
     ///
-    ///  ```
+    /// ```
     /// let asyncSequence1 = [1, 2, 3].asyncElements
     /// let asyncSequence2 = [1, 2, 3].asyncElements
     /// let asyncSequence3 = [1, 2, 3].asyncElements
@@ -62,7 +62,7 @@ public extension AsyncSequences {
     /// for try await element in zippedAsyncSequence {
     ///     print(element) // will print -> [1, 1, 1, 1, 1] [2, 2, 2, 2, 2] [3, 3, 3, 3, 3]
     /// }
-    ///  ```
+    /// ```
     typealias Zip<UpstreamAsyncSequence: AsyncSequence> = AsyncZipSequence<UpstreamAsyncSequence>
 }
 
