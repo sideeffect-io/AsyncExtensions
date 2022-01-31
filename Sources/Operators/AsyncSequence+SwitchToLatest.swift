@@ -9,7 +9,7 @@ public extension AsyncSequence where Element: AsyncSequence {
     /// Republishes elements sent by the most recently received async sequence.
     ///
     /// ```
-    /// let sourceSequence = [1, 2, 3].asyncElements
+    /// let sourceSequence = AsyncSequences.From([1, 2, 3])
     /// let mappedSequence = sourceSequence.map { element in ["a\(element)", "b\(element)"].asyncElements }
     /// let switchedSequence = mappedSequence.switchToLatest()
     ///

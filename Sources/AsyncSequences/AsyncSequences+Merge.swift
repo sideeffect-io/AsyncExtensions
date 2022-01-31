@@ -9,8 +9,9 @@ public extension AsyncSequences {
     /// `Merge` is an AsyncSequence that merges several async sequences respecting
     /// their temporality while being iterated over. If the parent task is cancelled while iterating
     /// then the iteration finishes.
+    /// When all the async sequences have finished, so too does the merged async sequence.
     ///
-    ///  ```
+    /// ```
     /// // 0.1ms   1ms    1.5ms   2ms     3ms     4.5ms
     /// //  4       1       5      2       3        6
     ///
@@ -43,7 +44,7 @@ public extension AsyncSequences {
     /// for try await element in mergedAsyncSequence {
     ///     print(element) // will print -> 4 1 5 2 3 6
     /// }
-    ///  ```
+    /// ```
     typealias Merge<UpstreamAsyncSequence: AsyncSequence> = AsyncMergeSequence<UpstreamAsyncSequence>
 }
 

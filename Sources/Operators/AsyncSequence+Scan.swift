@@ -10,7 +10,7 @@ public extension AsyncSequence {
     /// along with the last value returned by the closure.
     ///
     /// ```
-    /// let sourceSequence = [1, 2, 3, 4, 5].asyncElements
+    /// let sourceSequence = AsyncSequences.From([1, 2, 3, 4, 5])
     /// let scannedSequence = sourceSequence.scan("") { accumulator, element in
     ///     return accumulator + "\(element)"
     /// }

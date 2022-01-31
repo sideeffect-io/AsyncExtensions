@@ -11,7 +11,7 @@ public extension AsyncSequence {
     /// Mapping to a new async sequence will cancel the task related to the previous one.
     ///
     /// ```
-    /// let sourceSequence = [1, 2, 3].asyncElements
+    /// let sourceSequence = AsyncSequences.From([1, 2, 3])
     /// let flatMapLatestSequence = sourceSequence.map { element in ["a\(element)", "b\(element)"] }
     ///
     /// for try await element in flatMapLatestSequence {
