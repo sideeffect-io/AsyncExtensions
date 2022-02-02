@@ -41,6 +41,7 @@ AsyncSequences
 * [SwitchToLatest](#SwitchToLatest)
 * [FlatMapLatest](#FlatMapLatest)
 * [HandleEvents](#HandleEvents)
+* [Assign](#Assign)
 * [EraseToAnyAsyncSequence](#EraseToAnyAsyncSequence)
 
 More operators and extensions are to come. Pull requests are of course welcome.
@@ -374,6 +375,20 @@ for try await element in handledSequence {}
 // Element is 4
 // Element is 5
 // finished
+```
+
+### Assign
+
+`assign(to:on:)` assigns each element from the async sequence to a property on an object.
+
+```swift
+class Root {
+    var property: String = ""
+}
+
+let root = Root()
+let fromSequence = AsyncSequences.From(["1", "2", "3"])
+try await fromSequence.assign(to: \.property, on: root) // will set the property value to "1", "2", "3"
 ```
 
 ### EraseToAnyAsyncSequence
