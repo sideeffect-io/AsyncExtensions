@@ -42,7 +42,7 @@ public final class AsyncCurrentValueStream<Element>: Stream, AsyncSequence, Send
     let continuations = AsyncStreams.Continuations<Element>()
     let storage: Storage
 
-    var element: Element {
+    public var element: Element {
         get {
             self.storage.retrieve()
         }
