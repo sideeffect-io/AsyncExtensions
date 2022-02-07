@@ -58,7 +58,9 @@ final class AsyncSequence_SwitchToLatestTests: XCTestCase {
         let childAsyncSequence3 = LongAsyncSequence(elements: [9, 10, 11], interval: .milliSeconds(200), onCancel: { asyncSequence3IsCancelled = true })
             .prepend(8)
 
-        let mainAsyncSequence = LongAsyncSequence(elements: [childAsyncSequence1, childAsyncSequence2, childAsyncSequence3], interval: .milliSeconds(30), onCancel: { print("Cancelled main") })
+        let mainAsyncSequence = LongAsyncSequence(elements: [childAsyncSequence1, childAsyncSequence2, childAsyncSequence3],
+                                                  interval: .milliSeconds(30),
+                                                  onCancel: {})
 
         let sut = mainAsyncSequence.switchToLatest()
 

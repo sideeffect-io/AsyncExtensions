@@ -1,6 +1,6 @@
 //
 //  AsyncStreams+CurrentValueTests.swift
-//  
+//
 //
 //  Created by Thibault Wittemberg on 10/01/2022.
 //
@@ -16,13 +16,13 @@ final class AsyncStreams_CurrentValueTests: XCTestCase {
     func testCurrentValue_stores_element_when_init() async {
         let value = Int.random(in: 0...100)
         let sut = AsyncStreams.CurrentValue<Int>(value)
-        let element = sut.element
+        let element = await sut.element
         XCTAssertEqual(value, element)
     }
 
     func testCurrentValue_replays_element_when_new_loop() {
-        let exp = expectation(description: "Current value is replayed when new loop")
-        exp.expectedFulfillmentCount = 2
+        let currentValueHasBeenReplayedExpectation = expectation(description: "Current value is replayed when new loop")
+        currentValueHasBeenReplayedExpectation.expectedFulfillmentCount = 2
 
         let expectedResult = [1]
 
@@ -35,7 +35,7 @@ final class AsyncStreams_CurrentValueTests: XCTestCase {
                 receivedElements.append(element)
                 if element == 1 {
                     XCTAssertEqual(receivedElements, expectedResult)
-                    exp.fulfill()
+                    currentValueHasBeenReplayedExpectation.fulfill()
                 }
             }
         }
@@ -47,7 +47,7 @@ final class AsyncStreams_CurrentValueTests: XCTestCase {
                 receivedElements.append(element)
                 if element == 1 {
                     XCTAssertEqual(receivedElements, expectedResult)
-                    exp.fulfill()
+                    currentValueHasBeenReplayedExpectation.fulfill()
                 }
             }
         }
@@ -98,57 +98,10 @@ final class AsyncStreams_CurrentValueTests: XCTestCase {
 
         wait(for: [hasReceivedOneElementExpectation], timeout: 1)
 
-        sut.send(2)
-        sut.send(3)
-
-        wait(for: [hasReceivedSentElementsExpectation], timeout: 1)
-    }
-
-    func testSend_pushes_values_in_the_asyncSequence_when_directly_setting_the_value() {
-        let hasReceivedOneElementExpectation = expectation(description: "One element has been iterated in the async sequence")
-        hasReceivedOneElementExpectation.expectedFulfillmentCount = 2
-
-        let hasReceivedSentElementsExpectation = expectation(description: "Send pushes elements in created AsyncSequences")
-        hasReceivedSentElementsExpectation.expectedFulfillmentCount = 2
-
-        let expectedResult = [1, 2, 3]
-
-        let sut = AsyncStreams.CurrentValue<Int>(1)
-
         Task {
-            var receivedElements = [Int]()
-
-            for try await element in sut {
-                if element == 1 {
-                    hasReceivedOneElementExpectation.fulfill()
-                }
-                receivedElements.append(element)
-                if element == 3 {
-                    XCTAssertEqual(receivedElements, expectedResult)
-                    hasReceivedSentElementsExpectation.fulfill()
-                }
-            }
+            await sut.send(2)
+            await sut.send(3)
         }
-
-        Task {
-            var receivedElements = [Int]()
-
-            for try await element in sut {
-                if element == 1 {
-                    hasReceivedOneElementExpectation.fulfill()
-                }
-                receivedElements.append(element)
-                if element == 3 {
-                    XCTAssertEqual(receivedElements, expectedResult)
-                    hasReceivedSentElementsExpectation.fulfill()
-                }
-            }
-        }
-
-        wait(for: [hasReceivedOneElementExpectation], timeout: 1)
-
-        sut.element = 2
-        sut.element = 3
 
         wait(for: [hasReceivedSentElementsExpectation], timeout: 1)
     }
@@ -182,7 +135,7 @@ final class AsyncStreams_CurrentValueTests: XCTestCase {
 
         wait(for: [hasReceivedOneElementExpectation], timeout: 1)
 
-        sut.send(termination: .finished)
+        sut.nonBlockingSend(termination: .finished)
 
         wait(for: [hasFinishedExpectation], timeout: 1)
     }
@@ -226,7 +179,7 @@ final class AsyncStreams_CurrentValueTests: XCTestCase {
 
         wait(for: [hasReceivedOneElementExpectation], timeout: 1)
 
-        sut.send(termination: .failure(expectedError))
+        sut.nonBlockingSend(termination: .failure(expectedError))
 
         wait(for: [hasFinishedWithFailureExpectation], timeout: 1)
     }
@@ -293,21 +246,23 @@ final class AsyncStreams_CurrentValueTests: XCTestCase {
         // concurrently push values in the sut 1
         let task1 = Task {
             for index in (1...1000) {
-                sut.send(index)
+                await sut.send(index)
             }
         }
 
         // concurrently push values in the sut 2
         let task2 = Task {
             for index in (1001...2000) {
-                sut.send(index)
+                await sut.send(index)
             }
         }
 
         await task1.value
         await task2.value
 
-        sut.send(termination: .finished)
+        Task {
+            await sut.send(termination: .finished)
+        }
 
         let receivedElementsA = try await taskA.value
         let receivedElementsB = try await taskB.value

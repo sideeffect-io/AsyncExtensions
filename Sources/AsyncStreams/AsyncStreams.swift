@@ -7,80 +7,83 @@
 
 import Foundation
 
-public protocol Stream {
-    associatedtype Element
-
+public protocol Stream: AnyObject, AsyncSequence {
     func send(_ element: Element) async
     func send(termination: Termination) async
+}
+
+public extension Stream {
+    func nonBlockingSend(_ element: Element) {
+        Task { [weak self] in
+            await self?.send(element)
+        }
+    }
+
+    func nonBlockingSend(termination: Termination) {
+        Task { [weak self] in
+            await self?.send(termination: termination)
+        }
+    }
 }
 
 public enum AsyncStreams {}
 
 extension AsyncStreams {
-    final class Continuations<Element>: @unchecked Sendable {
+    actor Continuations<Element> {
         var continuations = [AnyHashable: AsyncThrowingStream<Element, Error>.Continuation]()
-        let queue = DispatchQueue(label: UUID().uuidString)
-
-        func register(continuation: AsyncThrowingStream<Element, Error>.Continuation, forId id: AnyHashable) {
-            self.queue.sync {
-                self.continuations[id] = continuation
-            }
-        }
 
         func send(_ element: Element) {
-            self.queue.sync {
-                self.continuations.values.forEach { $0.yield(element) }
-            }
+            self.continuations.values.forEach { $0.yield(element) }
         }
 
         func send(_ termination: Termination) {
-            self.queue.sync {
-                switch termination {
-                case .finished: self.continuations.values.forEach { $0.finish() }
-                case let .failure(error): self.continuations.values.forEach { $0.finish(throwing: error) }
-                }
-                self.continuations.removeAll()
+            switch termination {
+            case .finished: self.continuations.values.forEach { $0.finish() }
+            case let .failure(error): self.continuations.values.forEach { $0.finish(throwing: error) }
             }
+            self.continuations.removeAll()
+        }
+
+        func register(continuation: AsyncThrowingStream<Element, Error>.Continuation, forId id: AnyHashable) {
+            self.continuations[id] = continuation
         }
 
         func unregister(id: AnyHashable) {
-            self.queue.sync {
-                self.continuations[id] = nil
-            }
+            self.continuations[id] = nil
         }
     }
 
     public struct Iterator<Element>: AsyncIteratorProtocol {
         public typealias Element = Element
 
-        let clientId: UUID
         var baseIterator: AsyncThrowingStream<Element, Error>.Iterator
-        let continuations: AsyncStreams.Continuations<Element>
+        let unregisterBlock: () async -> Void
 
         init(
             clientId: UUID,
             baseIterator: AsyncThrowingStream<Element, Error>.Iterator,
             continuations: AsyncStreams.Continuations<Element>
         ) {
-            self.clientId = clientId
             self.baseIterator = baseIterator
-            self.continuations = continuations
+            self.unregisterBlock = { await continuations.unregister(id: clientId) }
         }
 
         public mutating func next() async throws -> Element? {
             guard !Task.isCancelled else {
-                self.continuations.unregister(id: self.clientId)
+                await self.unregisterBlock()
                 return nil
             }
 
-            let localContinuations = self.continuations
-            let localClientId = self.clientId
-
-            return try await withTaskCancellationHandler(operation: {
-                try await self.baseIterator.next()
-            }, onCancel: {
-                localContinuations.unregister(id: localClientId)
-            })
+            do {
+                let next = try await self.baseIterator.next()
+                if next == nil {
+                    await self.unregisterBlock()
+                }
+                return next
+            } catch {
+                await self.unregisterBlock()
+                throw error
+            }
         }
     }
 }

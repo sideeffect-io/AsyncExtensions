@@ -57,17 +57,14 @@ public struct AsyncFromSequence<BaseSequence: Sequence>: AsyncSequence {
         var baseIterator: BaseSequence.Iterator
         var interval: AsyncSequences.Interval
 
-        public mutating func next() async -> BaseSequence.Element? {
+        public mutating func next() async throws -> BaseSequence.Element? {
             guard !Task.isCancelled else { return nil }
 
             if self.interval != .immediate {
-                do {
-                    try await Task.sleep(nanoseconds: self.interval.value)
-                } catch {}
+                try await Task.sleep(nanoseconds: self.interval.value)
             }
 
-            let next = self.baseIterator.next()
-            return next
+            return self.baseIterator.next()
         }
     }
 }

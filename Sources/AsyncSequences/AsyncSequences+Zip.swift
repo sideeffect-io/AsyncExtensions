@@ -80,14 +80,14 @@ public struct AsyncZip2Sequence<UpstreamAsyncSequenceA: AsyncSequence, UpstreamA
 
     public func makeAsyncIterator() -> AsyncIterator {
         return Iterator(
-            upstreamIteratorA: SharedAsyncIterator(iterator: self.upstreamAsyncSequenceA.makeAsyncIterator()),
-            upstreamIteratorB: SharedAsyncIterator(iterator: self.upstreamAsyncSequenceB.makeAsyncIterator())
+            upstreamIteratorA: AsyncIteratorByRef(iterator: self.upstreamAsyncSequenceA.makeAsyncIterator()),
+            upstreamIteratorB: AsyncIteratorByRef(iterator: self.upstreamAsyncSequenceB.makeAsyncIterator())
         )
     }
 
     public struct Iterator: AsyncIteratorProtocol {
-        let upstreamIteratorA: SharedAsyncIterator<UpstreamAsyncSequenceA.AsyncIterator>
-        let upstreamIteratorB: SharedAsyncIterator<UpstreamAsyncSequenceB.AsyncIterator>
+        let upstreamIteratorA: AsyncIteratorByRef<UpstreamAsyncSequenceA.AsyncIterator>
+        let upstreamIteratorB: AsyncIteratorByRef<UpstreamAsyncSequenceB.AsyncIterator>
 
         public mutating func next() async throws -> Element? {
             guard !Task.isCancelled else { return nil }
@@ -136,9 +136,9 @@ public struct AsyncZip2Sequence<UpstreamAsyncSequenceA: AsyncSequence, UpstreamA
     }
 }
 
-public struct AsyncZip3Sequence < UpstreamAsyncSequenceA: AsyncSequence,
-                                UpstreamAsyncSequenceB: AsyncSequence,
-                                UpstreamAsyncSequenceC: AsyncSequence>: AsyncSequence {
+public struct AsyncZip3Sequence <UpstreamAsyncSequenceA: AsyncSequence,
+                                 UpstreamAsyncSequenceB: AsyncSequence,
+                                 UpstreamAsyncSequenceC: AsyncSequence>: AsyncSequence {
     public typealias Element = (UpstreamAsyncSequenceA.Element, UpstreamAsyncSequenceB.Element, UpstreamAsyncSequenceC.Element)
     public typealias AsyncIterator = Iterator
 
@@ -156,16 +156,16 @@ public struct AsyncZip3Sequence < UpstreamAsyncSequenceA: AsyncSequence,
 
     public func makeAsyncIterator() -> AsyncIterator {
         return Iterator(
-            upstreamIteratorA: SharedAsyncIterator(iterator: self.upstreamAsyncSequenceA.makeAsyncIterator()),
-            upstreamIteratorB: SharedAsyncIterator(iterator: self.upstreamAsyncSequenceB.makeAsyncIterator()),
-            upstreamIteratorC: SharedAsyncIterator(iterator: self.upstreamAsyncSequenceC.makeAsyncIterator())
+            upstreamIteratorA: AsyncIteratorByRef(iterator: self.upstreamAsyncSequenceA.makeAsyncIterator()),
+            upstreamIteratorB: AsyncIteratorByRef(iterator: self.upstreamAsyncSequenceB.makeAsyncIterator()),
+            upstreamIteratorC: AsyncIteratorByRef(iterator: self.upstreamAsyncSequenceC.makeAsyncIterator())
         )
     }
 
     public struct Iterator: AsyncIteratorProtocol {
-        let upstreamIteratorA: SharedAsyncIterator<UpstreamAsyncSequenceA.AsyncIterator>
-        let upstreamIteratorB: SharedAsyncIterator<UpstreamAsyncSequenceB.AsyncIterator>
-        let upstreamIteratorC: SharedAsyncIterator<UpstreamAsyncSequenceC.AsyncIterator>
+        let upstreamIteratorA: AsyncIteratorByRef<UpstreamAsyncSequenceA.AsyncIterator>
+        let upstreamIteratorB: AsyncIteratorByRef<UpstreamAsyncSequenceB.AsyncIterator>
+        let upstreamIteratorC: AsyncIteratorByRef<UpstreamAsyncSequenceC.AsyncIterator>
 
         public mutating func next() async throws -> Element? {
             guard !Task.isCancelled else { return nil }
@@ -242,20 +242,11 @@ public struct AsyncZipSequence<UpstreamAsyncSequence: AsyncSequence>: AsyncSeque
     }
 
     public func makeAsyncIterator() -> AsyncIterator {
-        return Iterator(upstreamIterators: self.upstreamAsyncSequences.map { SharedAsyncIterator(iterator: $0.makeAsyncIterator()) })
-    }
-
-    actor SequenceIndexGenerator {
-        var index: Int = 0
-
-        func nextIndex() -> Int {
-            self.index += 1
-            return index
-        }
+        return Iterator(upstreamIterators: self.upstreamAsyncSequences.map { AsyncIteratorByRef(iterator: $0.makeAsyncIterator()) })
     }
 
     public struct Iterator: AsyncIteratorProtocol {
-        let upstreamIterators: [SharedAsyncIterator<UpstreamAsyncSequence.AsyncIterator>]
+        let upstreamIterators: [AsyncIteratorByRef<UpstreamAsyncSequence.AsyncIterator>]
 
         public mutating func next() async throws -> Element? {
             guard !Task.isCancelled else { return nil }
@@ -300,5 +291,14 @@ public struct AsyncZipSequence<UpstreamAsyncSequence: AsyncSequence>: AsyncSeque
 
             return elements.sorted(by: { $0.0 < $1.0 }).compactMap { $0.1 }
         }
+    }
+}
+
+actor SequenceIndexGenerator {
+    var index: Int = 0
+
+    func nextIndex() -> Int {
+        self.index += 1
+        return index
     }
 }

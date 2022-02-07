@@ -1,6 +1,6 @@
 //
 //  AsyncSequence+HandleEventsTests.swift
-//  
+//
 //
 //  Created by Thibault Wittemberg on 01/01/2022.
 //

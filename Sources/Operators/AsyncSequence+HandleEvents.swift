@@ -5,7 +5,7 @@
 //  Created by Thibault Wittemberg on 31/12/2021.
 //
 
-import Combine
+import Foundation
 
 public extension AsyncSequence {
     /// Performs the specified closures when async sequences events occur.
@@ -119,24 +119,23 @@ public struct AsyncHandleEventsSequence<UpstreamAsyncSequence: AsyncSequence>: A
                 self.onStartExecuted = true
             }
 
-            let localOnCancel = self.onCancel
-
             do {
-                return try await withTaskCancellationHandler(operation: {
-                    let nextElement = try await self.upstreamIterator.next()
+                let nextElement = try await self.upstreamIterator.next()
 
-                    if let element = nextElement {
-                        await self.onElement?(element)
+                if let element = nextElement {
+                    await self.onElement?(element)
+                } else {
+                    if Task.isCancelled {
+                        await self.onCancel?()
                     } else {
                         await self.onFinish?(.finished)
                     }
+                }
 
-                    return nextElement
-                }, onCancel: {
-                    Task {
-                        await localOnCancel?()
-                    }
-                })
+                return nextElement
+            } catch let error as CancellationError {
+                await self.onCancel?()
+                throw error
             } catch {
                 await self.onFinish?(.failure(error))
                 throw error
