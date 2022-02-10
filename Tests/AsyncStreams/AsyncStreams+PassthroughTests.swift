@@ -54,9 +54,11 @@ final class AsyncStreams_PassthroughTests: XCTestCase {
 
          wait(for: [isReadyToBeIteratedExpectation], timeout: 1)
 
-        sut.send(1)
-        sut.send(2)
-        sut.send(3)
+        Task {
+            await sut.send(1)
+            await sut.send(2)
+            await sut.send(3)
+        }
 
         wait(for: [hasReceivedSentElementsExpectation], timeout: 1)
     }
@@ -97,11 +99,11 @@ final class AsyncStreams_PassthroughTests: XCTestCase {
 
         wait(for: [isReadyToBeIteratedExpectation], timeout: 1)
 
-        sut.send(1)
+        sut.nonBlockingSend(1)
 
         wait(for: [hasReceivedOneElementExpectation], timeout: 1)
 
-        sut.send(termination: .finished)
+        sut.nonBlockingSend(termination: .finished)
 
         wait(for: [hasFinishedExpectation], timeout: 1)
     }
@@ -152,11 +154,11 @@ final class AsyncStreams_PassthroughTests: XCTestCase {
 
         wait(for: [isReadyToBeIteratedExpectation], timeout: 1)
 
-        sut.send(1)
+        sut.nonBlockingSend(1)
 
         wait(for: [hasReceivedOneElementExpectation], timeout: 1)
 
-        sut.send(termination: .failure(expectedError))
+        sut.nonBlockingSend(termination: .failure(expectedError))
 
         wait(for: [hasFinishedWithFailureExpectation], timeout: 1)
     }
@@ -185,7 +187,7 @@ final class AsyncStreams_PassthroughTests: XCTestCase {
 
         wait(for: [isReadyToBeIteratedExpectation], timeout: 1)
 
-        sut.send(1)
+        sut.nonBlockingSend(1)
 
         wait(for: [canCancelExpectation], timeout: 5) // one element has been emitted, we can cancel the task
 
@@ -231,21 +233,21 @@ final class AsyncStreams_PassthroughTests: XCTestCase {
         // concurrently push values in the sut 1
         let task1 = Task {
             for index in (0...1000) {
-                sut.send(index)
+                await sut.send(index)
             }
         }
 
         // concurrently push values in the sut 2
         let task2 = Task {
             for index in (1001...2000) {
-                sut.send(index)
+                await sut.send(index)
             }
         }
 
         await task1.value
         await task2.value
 
-        sut.send(termination: .finished)
+        await sut.send(termination: .finished)
 
         let receivedElementsA = try await taskA.value
         let receivedElementsB = try await taskB.value

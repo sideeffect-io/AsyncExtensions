@@ -1,6 +1,6 @@
 //
 //  AsyncSequences+Merge.swift
-//  
+//
 //
 //  Created by Thibault Wittemberg on 01/01/2022.
 //
@@ -13,22 +13,22 @@ private struct MockError: Error, Equatable {
     let code: Int
 }
 
-private struct TimedAsyncSequence: AsyncSequence, AsyncIteratorProtocol {
-    typealias Element = Int
+private struct TimedAsyncSequence<Element>: AsyncSequence, AsyncIteratorProtocol {
+    typealias Element = Element
     typealias AsyncIterator = TimedAsyncSequence
 
     private let intervalInMills: [UInt64]
-    private var iterator: Array<Int>.Iterator
+    private var iterator: Array<Element>.Iterator
     private var index = 0
     private let indexOfError: Int?
 
-    init(intervalInMills: [UInt64], sequence: [Int], indexOfError: Int? = nil) {
+    init(intervalInMills: [UInt64], sequence: [Element], indexOfError: Int? = nil) {
         self.intervalInMills = intervalInMills
         self.iterator = sequence.makeIterator()
         self.indexOfError = indexOfError
     }
 
-    mutating func next() async throws -> Int? {
+    mutating func next() async throws -> Element? {
 
         if let indexOfError = self.indexOfError, self.index == indexOfError {
             throw MockError(code: 1)
@@ -47,7 +47,31 @@ private struct TimedAsyncSequence: AsyncSequence, AsyncIteratorProtocol {
 }
 
 final class AsyncSequences_MergeTests: XCTestCase {
-    func testMerge_merges_sequences_according_to_the_timeline() {
+    func testMerge_merges_sequences_according_to_the_timeline_using_asyncSequences() async throws {
+        // -- 0 ------------------------------- 1200 ---------------------------
+        // ------- 300 ------------- 900 ------------------------------ 1800 ---
+        // --------------- 600 --------------------------- 1500 ----------------
+        // -- a --- c ----- f ------- d --------- b -------- g ---------- e ----
+        //
+        // output should be: a c f d b g e
+        let expectedElements = ["a", "c", "f", "d", "b", "g", "e"]
+
+        let asyncSequence1 = TimedAsyncSequence(intervalInMills: [0, 1200], sequence: ["a", "b"])
+        let asyncSequence2 = TimedAsyncSequence(intervalInMills: [300, 600, 900], sequence: ["c", "d", "e"])
+        let asyncSequence3 = TimedAsyncSequence(intervalInMills: [600, 1100], sequence: ["f", "g"])
+
+        let sut = AsyncSequences.Merge(asyncSequence1, asyncSequence2, asyncSequence3)
+
+        var receivedElements = [String]()
+        for try await element in sut {
+            try await Task.sleep(nanoseconds: 110_000_000)
+            receivedElements.append(element)
+        }
+
+        XCTAssertEqual(receivedElements, expectedElements)
+    }
+
+    func testMerge_merges_sequences_according_to_the_timeline_using_streams() {
         let readyToBeIteratedExpectation = expectation(description: "The merged sequence is ready to be iterated")
         let canSend2Expectation = expectation(description: "2 can be sent")
         let canSend3Expectation = expectation(description: "3 can be sent")
@@ -92,29 +116,29 @@ final class AsyncSequences_MergeTests: XCTestCase {
 
         wait(for: [readyToBeIteratedExpectation], timeout: 1)
 
-        asyncSequence1.send(1)
+        asyncSequence1.nonBlockingSend(1)
         wait(for: [canSend2Expectation], timeout: 1)
 
-        asyncSequence2.send(2)
+        asyncSequence2.nonBlockingSend(2)
         wait(for: [canSend3Expectation], timeout: 1)
 
-        asyncSequence3.send(3)
+        asyncSequence3.nonBlockingSend(3)
         wait(for: [canSend4Expectation], timeout: 1)
 
-        asyncSequence3.send(4)
+        asyncSequence3.nonBlockingSend(4)
         wait(for: [canSend5Expectation], timeout: 1)
 
-        asyncSequence2.send(5)
+        asyncSequence2.nonBlockingSend(5)
         wait(for: [canSend6Expectation], timeout: 1)
 
-        asyncSequence1.send(6)
-        asyncSequence1.send(termination: .finished)
-        asyncSequence2.send(termination: .finished)
-        asyncSequence3.send(termination: .finished)
+        asyncSequence1.nonBlockingSend(6)
+        asyncSequence1.nonBlockingSend(termination: .finished)
+        asyncSequence2.nonBlockingSend(termination: .finished)
+        asyncSequence3.nonBlockingSend(termination: .finished)
 
         wait(for: [mergedSequenceIsFinisedExpectation], timeout: 1)
     }
-    
+
     func testMerge_returns_empty_sequence_when_all_sequences_are_empty() async throws {
         var receivedResult = [Int]()
 
@@ -181,13 +205,13 @@ final class AsyncSequences_MergeTests: XCTestCase {
 
         wait(for: [readyToBeIteratedExpectation], timeout: 1)
 
-        asyncSequence1.send(1)
+        asyncSequence1.nonBlockingSend(1)
         wait(for: [canSend2Expectation], timeout: 1)
 
-        asyncSequence2.send(2)
+        asyncSequence2.nonBlockingSend(2)
         wait(for: [canSend3Expectation], timeout: 1)
 
-        asyncSequence1.send(termination: .failure(MockError(code: 1)))
+        asyncSequence1.nonBlockingSend(termination: .failure(MockError(code: 1)))
 
         wait(for: [mergedSequenceIsFinisedExpectation], timeout: 1)
     }

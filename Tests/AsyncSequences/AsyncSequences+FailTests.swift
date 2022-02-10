@@ -37,22 +37,29 @@ final class AsyncSequences_FailTests: XCTestCase {
     }
 
     func testFail_returns_an_asyncSequence_that_finishes_without_error_when_task_is_cancelled() {
-        let exp = expectation(description: "AsyncSequence finishes when task is cancelled")
+        let taskHasBeenCancelledExpectation = expectation(description: "The task has been cancelled")
+        let sequenceHasFinishedExpectation = expectation(description: "The async sequence has finished")
 
         let failSequence = AsyncSequences.Fail<Int>(error: MockError(code: 1))
 
-        Task {
+        let task = Task {
             do {
-                for try await _ in failSequence {
+                var iterator = failSequence.makeAsyncIterator()
+                wait(for: [taskHasBeenCancelledExpectation], timeout: 1)
+                while let _ = try await iterator.next() {
                     XCTFail("The AsyncSequence should not output elements")
                 }
-                exp.fulfill()
+                sequenceHasFinishedExpectation.fulfill()
             } catch {
                 XCTFail("The AsyncSequence should not throw an error")
             }
 
-        }.cancel()
+        }
 
-        waitForExpectations(timeout: 1)
+        task.cancel()
+
+        taskHasBeenCancelledExpectation.fulfill()
+
+        wait(for: [sequenceHasFinishedExpectation], timeout: 1)
     }
 }

@@ -43,7 +43,7 @@ public struct AsyncSwitchToLatestSequence<UpstreamAsyncSequence: AsyncSequence>:
 
     final class UpstreamIteratorManager {
         var upstreamIterator: UpstreamAsyncSequence.AsyncIterator
-        var currentChildIterator: UpstreamAsyncSequence.Element.AsyncIterator?
+        var childIterators = [AsyncIteratorByRef<UpstreamAsyncSequence.Element.AsyncIterator>]()
         var hasStarted = false
         var currentTask: Task<Element?, Error>?
 
@@ -60,21 +60,21 @@ public struct AsyncSwitchToLatestSequence<UpstreamAsyncSequence: AsyncSequence>:
             guard !self.hasStarted else { return }
             self.hasStarted = true
 
-            let firstChildSequence = try await self.upstreamIterator.next()
-            self.currentChildIterator = firstChildSequence?.makeAsyncIterator()
+            if let firstChildSequence = try await self.upstreamIterator.next() {
+                self.childIterators.append(AsyncIteratorByRef(iterator: firstChildSequence.makeAsyncIterator()))
+            }
 
             Task {
                 while let nextChildSequence = try await self.upstreamIterator.next() {
-                    self.currentChildIterator = nextChildSequence.makeAsyncIterator()
+                    self.childIterators.removeFirst()
+                    self.childIterators.append(AsyncIteratorByRef(iterator: nextChildSequence.makeAsyncIterator()))
                     self.currentTask?.cancel()
-                    self.currentTask = nil
                 }
             }
         }
 
         func nextOnCurrentChildIterator() async throws -> Element? {
-            let nextElement = try await self.currentChildIterator?.next()
-            return nextElement
+            try await self.childIterators.last?.next()
         }
     }
 
@@ -92,9 +92,12 @@ public struct AsyncSwitchToLatestSequence<UpstreamAsyncSequence: AsyncSequence>:
             var emittedElement: Element?
             var currentTask: Task<Element?, Error>
 
+            // starting the root iterator to be able to iterate in the first child iterator
             try await self.upstreamIteratorManager.startUpstreamIterator()
             let localUpstreamIteratorManager = self.upstreamIteratorManager
 
+            // if a task is cancelled while waiting with the next element (a new element arrived in the root iterator)
+            // we create a new task and wait for the elements from the new child iterator
             while noValueHasBeenEmitted {
                 currentTask = Task {
                     do {

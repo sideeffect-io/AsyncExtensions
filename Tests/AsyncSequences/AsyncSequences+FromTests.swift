@@ -16,14 +16,14 @@ final class AsyncSequences_FromTests: XCTestCase {
 
         let sut = AsyncSequences.From(sequence)
 
-        for await element in sut {
+        for try await element in sut {
             receivedResult.append(element)
         }
 
         XCTAssertEqual(receivedResult, sequence)
     }
 
-    func testFrom_returns_an_asyncSequence_that_finishes_when_task_is_cancelled() {
+    func testFrom_returns_an_asyncSequence_that_finishes_when_task_is_cancelled() throws {
         let canCancelExpectation = expectation(description: "The first element has been emitted")
         let hasCancelExceptation = expectation(description: "The task has been cancelled")
 
@@ -33,7 +33,7 @@ final class AsyncSequences_FromTests: XCTestCase {
 
         let task = Task {
             var firstElement: Int?
-            for await element in sut {
+            for try await element in sut {
                 firstElement = element
                 canCancelExpectation.fulfill()
                 wait(for: [hasCancelExceptation], timeout: 5)

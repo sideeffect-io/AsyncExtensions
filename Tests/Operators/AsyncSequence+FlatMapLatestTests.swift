@@ -59,60 +59,84 @@ private struct LongAsyncSequence: AsyncSequence, AsyncIteratorProtocol {
     }
 }
 
-final class AsyncSequence_FlatMapLatestTests: XCTestCase {
-    func testFlatMapLatest_switches_to_latest_asyncSequence_and_cancels_previous_ones() {
-        let firstChildSequenceHasEmittedTwoElementsExpectation = expectation(description: "The first child sequence has emitted two elements")
-        let secondChildSequenceHasEmittedOneElementsExpectation = expectation(description: "The second child sequence has emitted one element")
-        let thirdChildSequenceHasEmittedTwoElementsExpectation = expectation(description: "The third child sequence has emitted two elements")
+private struct TimedAsyncSequence<Element>: AsyncSequence, AsyncIteratorProtocol {
+    typealias Element = Element
+    typealias AsyncIterator = TimedAsyncSequence
 
-        let firstChildSequenceIsCancelled = expectation(description: "First child sequence has been cancelled")
-        let secondChildSequenceIsCancelled = expectation(description: "Second child sequence has been cancelled")
+    private let intervalInMills: [UInt64]
+    private var iterator: Array<Element>.Iterator
+    private var index = 0
+    private let indexOfError: Int?
 
-        let baseSequence = AsyncStreams.CurrentValue<Int>(1)
+    init(intervalInMills: [UInt64], sequence: [Element], indexOfError: Int? = nil) {
+        self.intervalInMills = intervalInMills
+        self.iterator = sequence.makeIterator()
+        self.indexOfError = indexOfError
+    }
 
-        let sut = baseSequence.flatMapLatest { element -> AnyAsyncSequence<Int> in
-            let childElement1 = (element * 10) + 1
-            let childElement2 = (element * 10) + 2
-            let childElement3 = (element * 10) + 3
+    mutating func next() async throws -> Element? {
 
-            return AsyncSequences
-                .From([childElement1, childElement2, childElement3], interval: .milliSeconds(100))
-                .eraseToAnyAsyncSequence()
+        if let indexOfError = self.indexOfError, self.index == indexOfError {
+            throw MockError(code: 1)
         }
 
-        Task {
-            var receivedElements = [Int]()
-            for try await element in sut {
-                receivedElements.append(element)
+        if self.index < self.intervalInMills.count {
+            try await Task.sleep(nanoseconds: self.intervalInMills[index] * 1_000_000)
+            self.index += 1
+        }
+        return self.iterator.next()
+    }
 
-                if element == 12 {
-                    firstChildSequenceHasEmittedTwoElementsExpectation.fulfill()
-                    wait(for: [firstChildSequenceIsCancelled], timeout: 1)
-                }
+    func makeAsyncIterator() -> AsyncIterator {
+        self
+    }
+}
 
-                if element == 21 {
-                    secondChildSequenceHasEmittedOneElementsExpectation.fulfill()
-                    wait(for: [secondChildSequenceIsCancelled], timeout: 1)
-                }
+final class AsyncSequence_FlatMapLatestTests: XCTestCase {
+    func testFlatMapLatest_emits_elements_from_newest_sequence_and_cancels_previous_sequences() async throws {
+        // ---- 50 ------- 500 ---------- 1000 -------------------------------
+        // -------- 70 ------------ 750 --------------------------------------
+        // -------------------- 520 ---------------------------------- 1520 --
+        // ------------------------------------ 1100 -- 1200 -- 1300 ---------
+        // ---- 1 -- a ---- 2 -- c ------- 3 --- e ----- f ------ g ----------
+        //
+        // output should be: a c e f g
+        // childAsyncSequence1 and childAsyncSequence2 will be cancelled
+        let expectedElements = ["a", "c", "e", "f", "g"]
+        var childAsyncSequence1Cancelled = false
+        var childAsyncSequence2Cancelled = false
+        var childAsyncSequence3Cancelled = false
 
-                if element == 32 {
-                    XCTAssertEqual(receivedElements, [11, 12, 21, 31, 32])
-                    thirdChildSequenceHasEmittedTwoElementsExpectation.fulfill()
-                }
+        let rootAsyncSequence = TimedAsyncSequence(intervalInMills: [50, 450, 500], sequence: [1, 2, 3])
+
+        let childAsyncSequence1 = TimedAsyncSequence(intervalInMills: [20, 680], sequence: ["a", "b"])
+            .handleEvents(onCancel: { childAsyncSequence1Cancelled = true })
+        
+        let childAsyncSequence2 = TimedAsyncSequence(intervalInMills: [20, 1500], sequence: ["c", "d"])
+            .handleEvents(onCancel: { childAsyncSequence2Cancelled = true })
+
+        let childAsyncSequence3 = TimedAsyncSequence(intervalInMills: [100, 100, 100], sequence: ["e", "f", "g"])
+            .handleEvents(onCancel: { childAsyncSequence3Cancelled = true })
+
+        let sut = rootAsyncSequence.flatMapLatest { element -> AsyncHandleEventsSequence<TimedAsyncSequence<String>> in
+            switch element {
+            case 1: return childAsyncSequence1
+            case 2: return childAsyncSequence2
+            default: return childAsyncSequence3
             }
         }
 
-        wait(for: [firstChildSequenceHasEmittedTwoElementsExpectation], timeout: 1)
+        var receivedElements = [String]()
 
-        baseSequence.send(2)
-        firstChildSequenceIsCancelled.fulfill()
+        for try await element in sut {
+            receivedElements.append(element)
+        }
 
-        wait(for: [secondChildSequenceHasEmittedOneElementsExpectation], timeout: 1)
+        XCTAssertEqual(receivedElements, expectedElements)
+        XCTAssertTrue(childAsyncSequence1Cancelled)
+        XCTAssertTrue(childAsyncSequence2Cancelled)
+        XCTAssertFalse(childAsyncSequence3Cancelled)
 
-        baseSequence.send(3)
-        secondChildSequenceIsCancelled.fulfill()
-
-        wait(for: [thirdChildSequenceHasEmittedTwoElementsExpectation], timeout: 1)
     }
 
     func testFlatMapLatest_propagates_errors_when_transform_function_fails() async {
@@ -150,7 +174,7 @@ final class AsyncSequence_FlatMapLatestTests: XCTestCase {
             XCTAssertEqual(error as? MockError, expectedError)
         }
     }
-    
+
     func testFlatMapLatest_finishes_when_task_is_cancelled_after_switched() {
         let canCancelExpectation = expectation(description: "The first element has been emitted")
         let hasCancelExceptation = expectation(description: "The task has been cancelled")

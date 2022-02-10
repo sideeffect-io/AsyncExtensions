@@ -66,103 +66,41 @@ public struct AsyncMergeSequence<UpstreamAsyncSequence: AsyncSequence>: AsyncSeq
         return Iterator(upstreamIterators: self.upstreamAsyncSequences.map { $0.makeAsyncIterator() })
     }
 
-    actor UpstreamAsyncIteratorState {
-        var busy = false
-        var finished = false
-
-        func setBusy(_ value: Bool) {
-            self.busy = value
-        }
-
-        func setFinished() {
-            self.finished = true
-            self.busy = false
-        }
-
-        func isAvailable() -> Bool {
-            !self.busy && !self.finished
-        }
-    }
-
-    final class UpstreamAsyncIterator<BaseAsyncIterator: AsyncIteratorProtocol>: AsyncIteratorProtocol {
-        public typealias Element = BaseAsyncIterator.Element
-        var iterator: BaseAsyncIterator?
-        let state = UpstreamAsyncIteratorState()
-
-        init(iterator: BaseAsyncIterator?) {
-            self.iterator = iterator
-        }
-
-        public func next() async throws -> BaseAsyncIterator.Element? {
-            guard !Task.isCancelled else { return nil }
-
-            await self.state.setBusy(true)
-            let next = try await self.iterator?.next()
-            if next == nil {
-                await self.state.setFinished()
-            }
-            await self.state.setBusy(false)
-            return next
-        }
-
-        public func isAvailable() async -> Bool {
-            await self.state.isAvailable()
-        }
-    }
-
     enum UpstreamElement {
         case element(Element)
         case finished
     }
 
+    actor ElementCounter {
+        var counter = 0
+
+        func increaseCounter() {
+            self.counter += 1
+        }
+
+        func decreaseCounter() {
+            guard self.counter > 0 else { return }
+            self.counter -= 1
+        }
+
+        func hasElement() -> Bool {
+            self.counter > 0
+        }
+    }
+
     public struct Iterator: AsyncIteratorProtocol {
-        let passthrough = AsyncStreams.Passthrough<UpstreamElement>()
-        var passthroughIterator: AsyncStreams.Passthrough<UpstreamElement>.AsyncIterator
-        let upstreamIterators: [UpstreamAsyncIterator<UpstreamAsyncSequence.AsyncIterator>]
+        let sink = AsyncStreams.Passthrough<UpstreamElement>()
+        var sinkIterator: AsyncStreams.Passthrough<UpstreamElement>.AsyncIterator
+        let upstreamIterators: [SharedAsyncIterator<UpstreamAsyncSequence.AsyncIterator>]
+        let elementCounter = ElementCounter()
         var numberOfFinished = 0
 
         public init(upstreamIterators: [UpstreamAsyncSequence.AsyncIterator]) {
-            self.upstreamIterators = upstreamIterators.map { UpstreamAsyncIterator(iterator: $0) }
-            self.passthroughIterator = self.passthrough.makeAsyncIterator()
+            self.upstreamIterators = upstreamIterators.map { SharedAsyncIterator(iterator: $0) }
+            self.sinkIterator = self.sink.makeAsyncIterator()
         }
 
-        // swiftlint:disable:next cyclomatic_complexity
-        public mutating func next() async throws -> Element? {
-            guard !Task.isCancelled else { return nil }
-
-            let localPassthrough = self.passthrough
-
-            // iterating over the upstream iterators to ask for their next element. Only
-            // the available iterators are requested (not already being computing the next
-            // element from the previous iteration)
-            for upstreamIterator in self.upstreamIterators {
-                guard !Task.isCancelled else { break }
-
-                let localUpstreamIterator = upstreamIterator
-
-                // isAvailable() means is not busy and not finished
-                if await localUpstreamIterator.isAvailable() {
-                    Task {
-                        do {
-                            let nextElement = try await localUpstreamIterator.next()
-
-                            // if the next element is nil, it means one if the upstream iterator
-                            // is finished ... its does not mean the zipped async sequence is finished
-                            guard let nonNilNextElement = nextElement else {
-                                localPassthrough.send(.finished)
-                                return
-                            }
-
-                            localPassthrough.send(.element(nonNilNextElement))
-                        } catch is CancellationError {
-                            localPassthrough.send(.finished)
-                        } catch {
-                            localPassthrough.send(termination: .failure(error))
-                        }
-                    }
-                }
-            }
-
+        mutating func nextElementFromSink() async throws -> Element? {
             var noValue = true
             var value: Element?
 
@@ -170,8 +108,8 @@ public struct AsyncMergeSequence<UpstreamAsyncSequence: AsyncSequence>: AsyncSeq
             // true value is found.
             // if every upstream iterator has finished, then the zipped async sequence is also finished
             while noValue {
-                guard let nextChildElement = try await self.passthroughIterator.next() else {
-                    // the passthrough is finished, so is the zipped async sequence
+                guard let nextChildElement = try await self.sinkIterator.next() else {
+                    // the sink stream is finished, so is the zipped async sequence
                     noValue = false
                     value = nil
                     break
@@ -187,13 +125,70 @@ public struct AsyncMergeSequence<UpstreamAsyncSequence: AsyncSequence>: AsyncSeq
                         break
                     }
                 case let .element(element):
-                    // nominal case: a net element is available
+                    // nominal case: a next element is available
                     noValue = false
                     value = element
+                    await self.elementCounter.decreaseCounter()
                 }
             }
 
             return value
+        }
+
+        public mutating func next() async throws -> Element? {
+            guard !Task.isCancelled else { return nil }
+
+            // before requesting elements from the upstream iterators, we should reauest the next element from the sink iterator
+            // if it has some stacked values
+
+            // for now we leave it commented as I'm not sure it is not counterproductive.
+            // This "early" drain might prevent from requesting the next available upstream iterators as soon as possible
+            // since the sink iterator might deliver a value and the next will return right away
+
+//            guard await !self.elementCounter.hasElement() else {
+//                return try await self.nextElementFromSink()
+//            }
+
+            let localSink = self.sink
+            let localElementCounter = self.elementCounter
+
+            // iterating over the upstream iterators to ask for their next element. Only
+            // the available iterators are requested (not already being computing the next
+            // element from the previous iteration and not already finished)
+            for upstreamIterator in self.upstreamIterators {
+                guard !Task.isCancelled else { break }
+
+                let localUpstreamIterator = upstreamIterator
+                guard await !localUpstreamIterator.isFinished() else { continue }
+                Task {
+                    do {
+                        let nextSharedElement = try await localUpstreamIterator.next()
+
+                        // if the next element is nil, it means one of the upstream iterator
+                        // is finished ... its does not mean the zipped async sequence is finished (all upstream iterators have to be finished)
+                        guard let nextNonNilSharedElement = nextSharedElement else {
+                            await localSink.send(.finished)
+                            return
+                        }
+
+                        guard case let .value(nextElement) = nextNonNilSharedElement else {
+                            // the upstream iterator was not available ... see you at the next iteration
+                            return
+                        }
+
+                        // we have a next element from an upstream iterator, pushing it in the sink stream
+                        await localSink.send(.element(nextElement))
+                        await localElementCounter.increaseCounter()
+                    } catch is CancellationError {
+                        await localSink.send(.finished)
+                    } catch {
+                        await localSink.send(termination: .failure(error))
+                    }
+                }
+            }
+
+            // we wait for the sink iterator to deliver the next element
+            return try await self.nextElementFromSink()
         }
     }
 }

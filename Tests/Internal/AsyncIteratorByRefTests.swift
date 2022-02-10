@@ -1,5 +1,5 @@
 //
-//  SharedAsyncIteratorTests.swift
+//  AsyncIteratorByRefTests.swift
 //  
 //
 //  Created by Thibault Wittemberg on 23/01/2022.
@@ -12,10 +12,10 @@ private struct MockError: Error, Equatable {
     let code: Int
 }
 
-final class SharedAsyncIteratorTests: XCTestCase {
-    func testSharedAsyncIterator_forwards_elements_from_input_iterator() async throws {
+final class AsyncIteratorByRefTests: XCTestCase {
+    func testAsyncIteratorByRef_forwards_elements_from_input_iterator() async throws {
         let baseSequence = [1, 2, 3].asyncElements
-        let sut = SharedAsyncIterator(iterator: baseSequence.makeAsyncIterator())
+        let sut = AsyncIteratorByRef(iterator: baseSequence.makeAsyncIterator())
 
         var receivedElements = [Int]()
         while let element = try await sut.next() {
@@ -24,11 +24,11 @@ final class SharedAsyncIteratorTests: XCTestCase {
         XCTAssertEqual(receivedElements, [1, 2, 3])
     }
 
-    func testSharedAsyncIterator_forwards_errors_from_input_iterator() async throws {
+    func testAsyncIteratorByRef_forwards_errors_from_input_iterator() async throws {
         let mockError = MockError(code: Int.random(in: 0...100))
 
         let baseSequence = AsyncSequences.Fail<Int>(error: mockError)
-        let sut = SharedAsyncIterator(iterator: baseSequence.makeAsyncIterator())
+        let sut = AsyncIteratorByRef(iterator: baseSequence.makeAsyncIterator())
 
         do {
             while let _ = try await sut.next() {}
@@ -37,13 +37,13 @@ final class SharedAsyncIteratorTests: XCTestCase {
         }
     }
 
-    func testSharedAsyncIterator_finishes_when_task_is_cancelled() {
+    func testAsyncIteratorByRef_finishes_when_task_is_cancelled() {
         let canCancelExpectation = expectation(description: "The first element has been emitted")
         let hasCancelExceptation = expectation(description: "The task has been cancelled")
         let taskHasFinishedExpectation = expectation(description: "The task has finished")
 
         let baseSequence = [1, 2, 3, 4, 5].asyncElements
-        let sut = SharedAsyncIterator(iterator: baseSequence.makeAsyncIterator())
+        let sut = AsyncIteratorByRef(iterator: baseSequence.makeAsyncIterator())
 
         let task = Task {
             var firstElement: Int?

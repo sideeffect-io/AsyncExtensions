@@ -25,15 +25,15 @@ public extension AsyncStreams {
     ///     }
     /// }
     ///
-    /// .. later in the application flow
+    /// ... later in the application flow
     ///
-    /// passthrough.send(1)
-    /// passthrough.send(2)
+    /// await passthrough.send(1)
+    /// await passthrough.send(2)
     /// ```
     typealias Passthrough<Element> = AsyncPassthroughStream<Element>
 }
 
-public final class AsyncPassthroughStream<Element>: AsyncSequence, Stream, Sendable {
+public final class AsyncPassthroughStream<Element>: Stream, Sendable {
     public typealias AsyncIterator = AsyncStreams.Iterator<Element>
 
     let continuations = AsyncStreams.Continuations<Element>()
@@ -42,19 +42,23 @@ public final class AsyncPassthroughStream<Element>: AsyncSequence, Stream, Senda
 
     /// Sends a value to all underlying async sequences
     /// - Parameter element: the value to send
-    public func send(_ element: Element) {
-        self.continuations.send(element)
+    public func send(_ element: Element) async {
+        await self.continuations.send(element)
     }
 
     /// Finishes the async sequences with either a normal ending or an error.
     /// - Parameter termination: The termination to finish the async sequence.
-    public func send(termination: Termination) {
-        self.continuations.send(termination)
+    public func send(termination: Termination) async {
+        await self.continuations.send(termination)
     }
 
     func makeStream(forClientId clientId: UUID) -> AsyncThrowingStream<Element, Error> {
         return AsyncThrowingStream<Element, Error>(Element.self, bufferingPolicy: .unbounded) { [continuations] continuation in
-            continuations.register(continuation: continuation, forId: clientId)
+            Task {
+                // registration is async because the continuations are managed by an actor (to avoid race conditions on its internal storage).
+                // registering a continuation is possible only when the actor is available.
+                await continuations.register(continuation: continuation, forId: clientId)
+            }
         }
     }
 

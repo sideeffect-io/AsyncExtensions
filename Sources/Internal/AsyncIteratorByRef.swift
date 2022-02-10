@@ -1,11 +1,12 @@
 //
-//  SharedAsyncIterator.swift
+//  AsyncIteratorByRef.swift
 //  
 //
-//  Created by Thibault Wittemberg on 23/01/2022.
+//  Created by Thibault Wittemberg on 08/02/2022.
 //
 
-public final class SharedAsyncIterator<BaseAsyncIterator: AsyncIteratorProtocol>: AsyncIteratorProtocol {
+/// Allows to store an iterator and mutate it, when in a non mutating environment.
+final class AsyncIteratorByRef<BaseAsyncIterator: AsyncIteratorProtocol>: AsyncIteratorProtocol {
     public typealias Element = BaseAsyncIterator.Element
     var iterator: BaseAsyncIterator?
 
