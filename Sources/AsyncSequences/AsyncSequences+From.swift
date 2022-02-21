@@ -50,7 +50,7 @@ public struct AsyncFromSequence<BaseSequence: Sequence>: AsyncSequence {
     }
 
     public func makeAsyncIterator() -> AsyncIterator {
-        Iterator(baseIterator: self.baseSequence.makeIterator(), interval: self.interval)
+        return Iterator(baseIterator: self.baseSequence.makeIterator(), interval: self.interval)
     }
 
     public struct Iterator: AsyncIteratorProtocol {

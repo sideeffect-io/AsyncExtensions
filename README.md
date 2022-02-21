@@ -42,6 +42,7 @@ AsyncSequences
 * [FlatMapLatest](#FlatMapLatest)
 * [HandleEvents](#HandleEvents)
 * [Assign](#Assign)
+* [Multicast] (#Multicast)
 * [EraseToAnyAsyncSequence](#EraseToAnyAsyncSequence)
 
 More operators and extensions are to come. Pull requests are of course welcome.
@@ -237,13 +238,13 @@ The current value is replayed for any new async loop.
 let currentValue = AsyncStreams.CurrentValue<Int>(1)
 
 Task {
-    for try await element in passthrough {
+    for try await element in currentValue {
         print(element) // will print 1 2
     }
 }
 
 Task {
-    for try await element in passthrough {
+    for try await element in currentValue {
         print(element) // will print 1 2
     }
 }
@@ -389,6 +390,42 @@ class Root {
 let root = Root()
 let fromSequence = AsyncSequences.From(["1", "2", "3"])
 try await fromSequence.assign(to: \.property, on: root) // will set the property value to "1", "2", "3"
+```
+
+### Multicast
+
+`multicast(_:)` is useful when you have multiple client loops, but you want the upstream async sequence to only produce a single `AsyncIterator`.
+
+```swift
+let stream = AsyncStreams.Passthrough<(String, Int)>()
+let multicastedAsyncSequence = ["First", "Second", "Third"]
+    .asyncElements
+    .map { ($0, Int.random(in: 0...100)) }
+    .handleEvents(onElement: { print("AsyncSequence produces: ($0)") })
+    .multicast(stream)
+
+Task {
+    try await multicastedAsyncSequence
+        .collect { print ("Task 1 received: \($0)") }
+}
+
+Task {
+    try await multicastedAsyncSequence
+        .collect { print ("Task 2 received: \($0)") }
+}
+
+multicastedAsyncSequence.connect()
+
+// will print:
+// AsyncSequence produces: ("First", 78)
+// Stream 2 received: ("First", 78)
+// Stream 1 received: ("First", 78)
+// AsyncSequence produces: ("Second", 98)
+// Stream 2 received: ("Second", 98)
+// Stream 1 received: ("Second", 98)
+// AsyncSequence produces: ("Third", 61)
+// Stream 2 received: ("Third", 61)
+// Stream 1 received: ("Third", 61)
 ```
 
 ### EraseToAnyAsyncSequence

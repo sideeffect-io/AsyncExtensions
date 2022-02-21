@@ -16,7 +16,7 @@ final class AsyncStreams_CurrentValueTests: XCTestCase {
     func testCurrentValue_stores_element_when_init() async {
         let value = Int.random(in: 0...100)
         let sut = AsyncStreams.CurrentValue<Int>(value)
-        let element = await sut.element
+        let element = sut.element
         XCTAssertEqual(value, element)
     }
 
@@ -98,10 +98,8 @@ final class AsyncStreams_CurrentValueTests: XCTestCase {
 
         wait(for: [hasReceivedOneElementExpectation], timeout: 1)
 
-        Task {
-            await sut.send(2)
-            await sut.send(3)
-        }
+        sut.send(2)
+        sut.element = 3
 
         wait(for: [hasReceivedSentElementsExpectation], timeout: 1)
     }
@@ -135,9 +133,11 @@ final class AsyncStreams_CurrentValueTests: XCTestCase {
 
         wait(for: [hasReceivedOneElementExpectation], timeout: 1)
 
-        sut.nonBlockingSend(termination: .finished)
+        sut.send(termination: .finished)
 
         wait(for: [hasFinishedExpectation], timeout: 1)
+
+        XCTAssertTrue(sut.continuations.continuations.isEmpty)
     }
 
     func testSendFailure_ends_the_asyncSequence_with_an_error_and_clear_internal_data() {
@@ -179,9 +179,11 @@ final class AsyncStreams_CurrentValueTests: XCTestCase {
 
         wait(for: [hasReceivedOneElementExpectation], timeout: 1)
 
-        sut.nonBlockingSend(termination: .failure(expectedError))
+        sut.send(termination: .failure(expectedError))
 
         wait(for: [hasFinishedWithFailureExpectation], timeout: 1)
+
+        XCTAssertTrue(sut.continuations.continuations.isEmpty)
     }
 
     func testCurrentValue_finishes_when_task_is_cancelled() {
@@ -246,14 +248,14 @@ final class AsyncStreams_CurrentValueTests: XCTestCase {
         // concurrently push values in the sut 1
         let task1 = Task {
             for index in (1...1000) {
-                await sut.send(index)
+                sut.send(index)
             }
         }
 
         // concurrently push values in the sut 2
         let task2 = Task {
             for index in (1001...2000) {
-                await sut.send(index)
+                sut.send(index)
             }
         }
 
@@ -261,7 +263,7 @@ final class AsyncStreams_CurrentValueTests: XCTestCase {
         await task2.value
 
         Task {
-            await sut.send(termination: .finished)
+            sut.send(termination: .finished)
         }
 
         let receivedElementsA = try await taskA.value
