@@ -1,6 +1,7 @@
-**v0.1.1 **
+**v0.2.0 **
 
-- AsyncStreams.CurrentValue `element` made public
+- AsyncStreams.CurrentValue `element` made public and available with get/set
+- new Multicast operator
 
 **v0.1.0 - Hydrogen:**
 

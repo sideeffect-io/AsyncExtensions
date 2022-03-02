@@ -12,8 +12,6 @@ private struct MockError: Error, Equatable {
     let code: Int
 }
 
-import Combine
-
 private struct LongAsyncSequence<Element>: AsyncSequence, AsyncIteratorProtocol {
     typealias Element = Element
     typealias AsyncIterator = LongAsyncSequence

@@ -72,27 +72,25 @@ final class AsyncSequences_MergeTests: XCTestCase {
     }
 
     func testMerge_merges_sequences_according_to_the_timeline_using_streams() {
-        let readyToBeIteratedExpectation = expectation(description: "The merged sequence is ready to be iterated")
         let canSend2Expectation = expectation(description: "2 can be sent")
         let canSend3Expectation = expectation(description: "3 can be sent")
         let canSend4Expectation = expectation(description: "4 can be sent")
         let canSend5Expectation = expectation(description: "5 can be sent")
         let canSend6Expectation = expectation(description: "6 can be sent")
+        let canSendFinishExpectation = expectation(description: "finish can be sent")
 
         let mergedSequenceIsFinisedExpectation = expectation(description: "The merged sequence is finished")
 
-        let asyncSequence1 = AsyncStreams.Passthrough<Int>()
-        let asyncSequence2 = AsyncStreams.Passthrough<Int>()
-        let asyncSequence3 = AsyncStreams.Passthrough<Int>()
+        let stream1 = AsyncStreams.CurrentValue<Int>(1)
+        let stream2 = AsyncStreams.Passthrough<Int>()
+        let stream3 = AsyncStreams.Passthrough<Int>()
 
-        let sut = AsyncSequences.Merge(asyncSequence1, asyncSequence2, asyncSequence3)
+        let sut = AsyncSequences.Merge(stream1.eraseToAnyAsyncSequence(), stream2.eraseToAnyAsyncSequence(), stream3.eraseToAnyAsyncSequence())
 
         Task {
             var receivedElements = [Int]()
 
-            var iterator = sut.makeAsyncIterator()
-            readyToBeIteratedExpectation.fulfill()
-            while let element = try await iterator.next() {
+            for try await element in sut {
                 receivedElements.append(element)
                 if element == 1 {
                     canSend2Expectation.fulfill()
@@ -109,32 +107,36 @@ final class AsyncSequences_MergeTests: XCTestCase {
                 if element == 5 {
                     canSend6Expectation.fulfill()
                 }
+
+                if element == 6 {
+                    canSendFinishExpectation.fulfill()
+                }
             }
             XCTAssertEqual(receivedElements, [1, 2, 3, 4, 5, 6])
             mergedSequenceIsFinisedExpectation.fulfill()
         }
 
-        wait(for: [readyToBeIteratedExpectation], timeout: 1)
-
-        asyncSequence1.nonBlockingSend(1)
         wait(for: [canSend2Expectation], timeout: 1)
 
-        asyncSequence2.nonBlockingSend(2)
+        stream2.send(2)
         wait(for: [canSend3Expectation], timeout: 1)
 
-        asyncSequence3.nonBlockingSend(3)
+        stream3.send(3)
         wait(for: [canSend4Expectation], timeout: 1)
 
-        asyncSequence3.nonBlockingSend(4)
+        stream3.send(4)
         wait(for: [canSend5Expectation], timeout: 1)
 
-        asyncSequence2.nonBlockingSend(5)
+        stream2.send(5)
         wait(for: [canSend6Expectation], timeout: 1)
 
-        asyncSequence1.nonBlockingSend(6)
-        asyncSequence1.nonBlockingSend(termination: .finished)
-        asyncSequence2.nonBlockingSend(termination: .finished)
-        asyncSequence3.nonBlockingSend(termination: .finished)
+        stream1.send(6)
+
+        wait(for: [canSendFinishExpectation], timeout: 1)
+
+        stream1.send(termination: .finished)
+        stream2.send(termination: .finished)
+        stream3.send(termination: .finished)
 
         wait(for: [mergedSequenceIsFinisedExpectation], timeout: 1)
     }
@@ -172,23 +174,20 @@ final class AsyncSequences_MergeTests: XCTestCase {
     }
 
     func testMerge_propagates_error() {
-        let readyToBeIteratedExpectation = expectation(description: "The merged sequence is ready to be iterated")
         let canSend2Expectation = expectation(description: "2 can be sent")
         let canSend3Expectation = expectation(description: "3 can be sent")
-        let mergedSequenceIsFinisedExpectation = expectation(description: "The merged sequence is finished")
+        let mergedSequenceIsFinishedExpectation = expectation(description: "The merged sequence is finished")
 
-        let asyncSequence1 = AsyncStreams.Passthrough<Int>()
-        let asyncSequence2 = AsyncStreams.Passthrough<Int>()
+        let stream1 = AsyncStreams.CurrentValue<Int>(1)
+        let stream2 = AsyncStreams.Passthrough<Int>()
 
-        let sut = AsyncSequences.Merge(asyncSequence1, asyncSequence2)
+        let sut = AsyncSequences.Merge(stream1.eraseToAnyAsyncSequence(), stream2.eraseToAnyAsyncSequence())
 
         Task {
             var receivedElements = [Int]()
-
-            var iterator = sut.makeAsyncIterator()
-            readyToBeIteratedExpectation.fulfill()
             do {
-                while let element = try await iterator.next() {
+                for try await element in sut {
+                    print("Received element \(element)")
                     receivedElements.append(element)
                     if element == 1 {
                         canSend2Expectation.fulfill()
@@ -199,21 +198,18 @@ final class AsyncSequences_MergeTests: XCTestCase {
                 }
             } catch {
                 XCTAssertEqual(receivedElements, [1, 2])
-                mergedSequenceIsFinisedExpectation.fulfill()
+                mergedSequenceIsFinishedExpectation.fulfill()
             }
         }
 
-        wait(for: [readyToBeIteratedExpectation], timeout: 1)
-
-        asyncSequence1.nonBlockingSend(1)
         wait(for: [canSend2Expectation], timeout: 1)
 
-        asyncSequence2.nonBlockingSend(2)
+        stream2.send(2)
         wait(for: [canSend3Expectation], timeout: 1)
 
-        asyncSequence1.nonBlockingSend(termination: .failure(MockError(code: 1)))
+        stream1.send(termination: .failure(MockError(code: 1)))
 
-        wait(for: [mergedSequenceIsFinisedExpectation], timeout: 1)
+        wait(for: [mergedSequenceIsFinishedExpectation], timeout: 1)
     }
 
     func testMerge_finishes_when_task_is_cancelled() {

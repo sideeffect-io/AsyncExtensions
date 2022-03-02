@@ -24,8 +24,8 @@ public extension AsyncStreams {
     typealias Replay<Element> = AsyncReplayStream<Element>
 }
 
-public final class AsyncReplayStream<Element>: Stream, Sendable {
-    actor Storage {
+public final class AsyncReplayStream<Element>: Stream, @unchecked Sendable {
+    final class Storage {
         var buffer = ContiguousArray<Element>()
         let bufferSize: Int
 
@@ -56,6 +56,14 @@ public final class AsyncReplayStream<Element>: Stream, Sendable {
 
     public typealias AsyncIterator = AsyncStreams.Iterator<Element>
 
+    // we must make sure the inner continuations and storage can be used in a concurrent context since there can be multiple
+    // operations happening at the same time (concurrent registrations and sendings).
+    // we could use an Actor to enforce that BUT there is a drawback. If we use an Actor to handle Continuations,
+    // when registering a new continuation, the register function would have to be called within a Task
+    // because of its async nature. Doing so, it means that we could call `send` while the registration is not done and we
+    // would loose the value.
+    let serialQueue = DispatchQueue(label: UUID().uuidString)
+    
     let continuations = AsyncStreams.Continuations<Element>()
     let storage: Storage
 
@@ -67,23 +75,27 @@ public final class AsyncReplayStream<Element>: Stream, Sendable {
 
     /// Sends a value to all underlying async sequences
     /// - Parameter element: the value to send
-    public func send(_ element: Element) async {
-        await self.storage.push(element)
-        await self.continuations.send(element)
+    public func send(_ element: Element) {
+        self.serialQueue.async { [weak self] in
+            self?.storage.push(element)
+            self?.continuations.send(element)
+        }
     }
 
     /// Finishes the async sequences with either a normal ending or an error.
     /// - Parameter completion: The termination to finish the async sequence.
-    public func send(termination: Termination) async {
-        await self.continuations.send(termination)
-        await self.storage.clear()
+    public func send(termination: Termination) {
+        self.serialQueue.async { [weak self] in
+            self?.continuations.send(termination)
+            self?.storage.clear()
+        }
     }
 
     func makeStream(forClientId clientId: UUID) -> AsyncThrowingStream<Element, Error> {
-        return AsyncThrowingStream<Element, Error>(Element.self, bufferingPolicy: .unbounded) { [continuations, storage] continuation in
-            Task {
-                await continuations.register(continuation: continuation, forId: clientId)
-                await storage.elements.forEach { continuation.yield($0) }
+        return AsyncThrowingStream<Element, Error>(Element.self, bufferingPolicy: .unbounded) { [weak self] continuation in
+            self?.serialQueue.async { [weak self] in
+                self?.continuations.register(continuation: continuation, forId: clientId)
+                self?.storage.elements.forEach { continuation.yield($0) }
             }
         }
     }
@@ -92,9 +104,12 @@ public final class AsyncReplayStream<Element>: Stream, Sendable {
         let clientId = UUID()
         let stream = self.makeStream(forClientId: clientId)
         return AsyncStreams.Iterator<Element>(
-            clientId: clientId,
             baseIterator: stream.makeAsyncIterator(),
-            continuations: self.continuations
+            onCancelOrFinish: { [weak self] in
+                self?.serialQueue.async { [weak self] in
+                    self?.continuations.unregister(id: clientId)
+                }
+            }
         )
     }
 }

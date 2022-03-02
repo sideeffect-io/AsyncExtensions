@@ -5,6 +5,8 @@
 //  Created by Thibault Wittemberg on 04/01/2022.
 //
 
+import Foundation
+
 public extension AsyncSequence where Element: AsyncSequence {
     /// Republishes elements sent by the most recently received async sequence.
     ///
@@ -47,6 +49,8 @@ public struct AsyncSwitchToLatestSequence<UpstreamAsyncSequence: AsyncSequence>:
         var hasStarted = false
         var currentTask: Task<Element?, Error>?
 
+        let serialQueue = DispatchQueue(label: UUID().uuidString)
+
         init(upstreamIterator: UpstreamAsyncSequence.AsyncIterator) {
             self.upstreamIterator = upstreamIterator
         }
@@ -61,20 +65,27 @@ public struct AsyncSwitchToLatestSequence<UpstreamAsyncSequence: AsyncSequence>:
             self.hasStarted = true
 
             if let firstChildSequence = try await self.upstreamIterator.next() {
-                self.childIterators.append(AsyncIteratorByRef(iterator: firstChildSequence.makeAsyncIterator()))
+                self.serialQueue.async { [weak self] in
+                    self?.childIterators.append(AsyncIteratorByRef(iterator: firstChildSequence.makeAsyncIterator()))
+                }
             }
 
-            Task {
-                while let nextChildSequence = try await self.upstreamIterator.next() {
-                    self.childIterators.removeFirst()
-                    self.childIterators.append(AsyncIteratorByRef(iterator: nextChildSequence.makeAsyncIterator()))
-                    self.currentTask?.cancel()
+            Task { [weak self] in
+                while let nextChildSequence = try await self?.upstreamIterator.next() {
+                    self?.serialQueue.async { [weak self] in
+                        self?.childIterators.removeFirst()
+                        self?.childIterators.append(AsyncIteratorByRef(iterator: nextChildSequence.makeAsyncIterator()))
+                        self?.currentTask?.cancel()
+                    }
                 }
             }
         }
 
         func nextOnCurrentChildIterator() async throws -> Element? {
-            try await self.childIterators.last?.next()
+            let childIterator = self.serialQueue.sync { [weak self] in
+                self?.childIterators.last
+            }
+            return try await childIterator?.next()
         }
     }
 

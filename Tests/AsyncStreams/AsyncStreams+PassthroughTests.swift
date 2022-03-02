@@ -52,13 +52,11 @@ final class AsyncStreams_PassthroughTests: XCTestCase {
             }
         }
 
-         wait(for: [isReadyToBeIteratedExpectation], timeout: 1)
+        wait(for: [isReadyToBeIteratedExpectation], timeout: 1)
 
-        Task {
-            await sut.send(1)
-            await sut.send(2)
-            await sut.send(3)
-        }
+        sut.send(1)
+        sut.send(2)
+        sut.send(3)
 
         wait(for: [hasReceivedSentElementsExpectation], timeout: 1)
     }
@@ -99,13 +97,15 @@ final class AsyncStreams_PassthroughTests: XCTestCase {
 
         wait(for: [isReadyToBeIteratedExpectation], timeout: 1)
 
-        sut.nonBlockingSend(1)
+        sut.send(1)
 
         wait(for: [hasReceivedOneElementExpectation], timeout: 1)
 
-        sut.nonBlockingSend(termination: .finished)
+        sut.send(termination: .finished)
 
         wait(for: [hasFinishedExpectation], timeout: 1)
+
+        XCTAssertTrue(sut.continuations.continuations.isEmpty)
     }
 
     func testSendFailure_ends_the_asyncSequence_with_an_error_and_clear_internal_data() {
@@ -154,13 +154,15 @@ final class AsyncStreams_PassthroughTests: XCTestCase {
 
         wait(for: [isReadyToBeIteratedExpectation], timeout: 1)
 
-        sut.nonBlockingSend(1)
+        sut.send(1)
 
         wait(for: [hasReceivedOneElementExpectation], timeout: 1)
 
-        sut.nonBlockingSend(termination: .failure(expectedError))
+        sut.send(termination: .failure(expectedError))
 
         wait(for: [hasFinishedWithFailureExpectation], timeout: 1)
+
+        XCTAssertTrue(sut.continuations.continuations.isEmpty)
     }
 
     func testPassthrough_finishes_when_task_is_cancelled() {
@@ -187,7 +189,7 @@ final class AsyncStreams_PassthroughTests: XCTestCase {
 
         wait(for: [isReadyToBeIteratedExpectation], timeout: 1)
 
-        sut.nonBlockingSend(1)
+        sut.send(1)
 
         wait(for: [canCancelExpectation], timeout: 5) // one element has been emitted, we can cancel the task
 
@@ -233,21 +235,21 @@ final class AsyncStreams_PassthroughTests: XCTestCase {
         // concurrently push values in the sut 1
         let task1 = Task {
             for index in (0...1000) {
-                await sut.send(index)
+                sut.send(index)
             }
         }
 
         // concurrently push values in the sut 2
         let task2 = Task {
             for index in (1001...2000) {
-                await sut.send(index)
+                sut.send(index)
             }
         }
 
         await task1.value
         await task2.value
 
-        await sut.send(termination: .finished)
+        sut.send(termination: .finished)
 
         let receivedElementsA = try await taskA.value
         let receivedElementsB = try await taskB.value

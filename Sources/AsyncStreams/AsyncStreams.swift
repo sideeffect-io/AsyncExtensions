@@ -8,28 +8,16 @@
 import Foundation
 
 public protocol Stream: AnyObject, AsyncSequence {
-    func send(_ element: Element) async
-    func send(termination: Termination) async
-}
-
-public extension Stream {
-    func nonBlockingSend(_ element: Element) {
-        Task { [weak self] in
-            await self?.send(element)
-        }
-    }
-
-    func nonBlockingSend(termination: Termination) {
-        Task { [weak self] in
-            await self?.send(termination: termination)
-        }
-    }
+    func send(_ element: Element)
+    func send(termination: Termination)
 }
 
 public enum AsyncStreams {}
 
 extension AsyncStreams {
-    actor Continuations<Element> {
+    // Continuations can be accessed in a concurrent context. It is up to the caller to ensure
+    // the usage in a safe way (cf Passthrough, CurrrentValue and Replay)
+    final class Continuations<Element>{
         var continuations = [AnyHashable: AsyncThrowingStream<Element, Error>.Continuation]()
 
         func send(_ element: Element) {
@@ -44,11 +32,16 @@ extension AsyncStreams {
             self.continuations.removeAll()
         }
 
-        func register(continuation: AsyncThrowingStream<Element, Error>.Continuation, forId id: AnyHashable) {
+        func register(
+            continuation: AsyncThrowingStream<Element, Error>.Continuation,
+            forId id: AnyHashable
+        ) {
             self.continuations[id] = continuation
         }
 
-        func unregister(id: AnyHashable) {
+        func unregister(
+            id: AnyHashable
+        ) {
             self.continuations[id] = nil
         }
     }
@@ -57,31 +50,22 @@ extension AsyncStreams {
         public typealias Element = Element
 
         var baseIterator: AsyncThrowingStream<Element, Error>.Iterator
-        let unregisterBlock: () async -> Void
-
-        init(
-            clientId: UUID,
-            baseIterator: AsyncThrowingStream<Element, Error>.Iterator,
-            continuations: AsyncStreams.Continuations<Element>
-        ) {
-            self.baseIterator = baseIterator
-            self.unregisterBlock = { await continuations.unregister(id: clientId) }
-        }
+        let onCancelOrFinish: () -> Void
 
         public mutating func next() async throws -> Element? {
             guard !Task.isCancelled else {
-                await self.unregisterBlock()
+                self.onCancelOrFinish()
                 return nil
             }
 
             do {
                 let next = try await self.baseIterator.next()
                 if next == nil {
-                    await self.unregisterBlock()
+                    self.onCancelOrFinish()
                 }
                 return next
             } catch {
-                await self.unregisterBlock()
+                self.onCancelOrFinish()
                 throw error
             }
         }

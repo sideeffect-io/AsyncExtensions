@@ -36,8 +36,8 @@ public extension AsyncStreams {
     typealias CurrentValue<Element> = AsyncCurrentValueStream<Element>
 }
 
-public final class AsyncCurrentValueStream<Element>: Stream, Sendable {
-    actor Storage {
+public final class AsyncCurrentValueStream<Element>: Stream, @unchecked Sendable {
+    final class Storage {
         var element: Element
 
         init(_ element: Element) {
@@ -54,12 +54,27 @@ public final class AsyncCurrentValueStream<Element>: Stream, Sendable {
     }
 
     public typealias AsyncIterator = AsyncStreams.Iterator<Element>
+
+    // we must make sure the inner continuations and storage can be used in a concurrent context since there can be multiple
+    // operations happening at the same time (concurrent registrations and sendings).
+    // we could use an Actor to enforce that BUT there is a drawback. If we use an Actor to handle Continuations,
+    // when registering a new continuation, the register function would have to be called within a Task
+    // because of its async nature. Doing so, it means that we could call `send` while the registration is not done and we
+    // would loose the value.
+    let serialQueue = DispatchQueue(label: UUID().uuidString)
+
     let continuations = AsyncStreams.Continuations<Element>()
     let storage: Storage
 
     public var element: Element {
-        get async {
-            await self.storage.retrieve()
+        get {
+            self.serialQueue.sync {
+                self.storage.retrieve()
+            }
+        }
+
+        set {
+            self.send(newValue)
         }
     }
 
@@ -69,25 +84,27 @@ public final class AsyncCurrentValueStream<Element>: Stream, Sendable {
 
     /// Sends a value to all underlying async sequences
     /// - Parameter element: the value to send
-    public func send(_ element: Element) async {
-        await self.storage.update(element)
-        await self.continuations.send(element)
+    public func send(_ element: Element) {
+        self.serialQueue.async { [weak self] in
+            self?.storage.update(element)
+            self?.continuations.send(element)
+        }
     }
 
     /// Finishes the async sequences with either a normal ending or an error.
     /// - Parameter termination: The termination to finish the async sequence.
-    public func send(termination: Termination) async {
-        await self.continuations.send(termination)
+    public func send(termination: Termination) {
+        self.serialQueue.async { [weak self] in
+            self?.continuations.send(termination)
+        }
     }
 
     func makeStream(forClientId clientId: UUID) -> AsyncThrowingStream<Element, Error> {
-        return AsyncThrowingStream<Element, Error>(Element.self, bufferingPolicy: .unbounded) { [continuations, storage] continuation in
-            Task {
-                // registration is async because the continuations are managed by an actor (to avoid race conditions on its internal storage).
-                // registering a continuation is possible only when the actor is available.
-                let element = await storage.retrieve()
+        return AsyncThrowingStream<Element, Error>(Element.self, bufferingPolicy: .unbounded) { [weak self] continuation in
+            self?.serialQueue.async { [weak self] in
+                self?.continuations.register(continuation: continuation, forId: clientId)
+                guard let element = self?.storage.retrieve() else { return }
                 continuation.yield(element)
-                await continuations.register(continuation: continuation, forId: clientId)
             }
         }
     }
@@ -96,9 +113,12 @@ public final class AsyncCurrentValueStream<Element>: Stream, Sendable {
         let clientId = UUID()
         let stream = self.makeStream(forClientId: clientId)
         return AsyncStreams.Iterator<Element>(
-            clientId: clientId,
             baseIterator: stream.makeAsyncIterator(),
-            continuations: self.continuations
+            onCancelOrFinish: { [weak self] in
+                self?.serialQueue.async { [weak self] in
+                    self?.continuations.unregister(id: clientId)
+                }
+            }
         )
     }
 }
