@@ -58,13 +58,12 @@ final class ConcurrentAccessRegulator<UpstreamAsyncSequence: AsyncSequence>: @un
 
         do {
             let next = try await self.upstreamAsyncIterator?.next()
-
+            await self.onNext(next)
+            
             await self.gate.unlock()
-
+            
             // yield allows to promote other tasks to resume, giving a chance to request a next element
             await Task.yield()
-
-            await self.onNext(next)
         } catch is CancellationError {
             await self.onCancel()
         } catch {

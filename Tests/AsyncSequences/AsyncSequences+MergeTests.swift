@@ -48,19 +48,17 @@ private struct TimedAsyncSequence<Element>: AsyncSequence, AsyncIteratorProtocol
 
 final class AsyncSequences_MergeTests: XCTestCase {
     func testMerge_merges_sequences_according_to_the_timeline_using_asyncSequences() async throws {
-        // -- 0 ------------------------------- 1200 ---------------------------
-        // ------- 300 ------------- 900 ------------------------------ 1800 ---
-        // --------------- 600 --------------------------- 1500 ----------------
-        // -- a --- c ----- f ------- d --------- b -------- g ---------- e ----
+        // -- 0 ------------------------------- 1000 ----------------------------- 2000 -
+        // --------------- 500 --------------------------------- 1500 -------------------
+        // -- a ----------- d ------------------ b --------------- e --------------- c --
         //
-        // output should be: a c f d b g e
-        let expectedElements = ["a", "c", "f", "d", "b", "g", "e"]
+        // output should be: a, d, b, e, c
+        let expectedElements = ["a", "d", "b", "e", "c"]
 
-        let asyncSequence1 = TimedAsyncSequence(intervalInMills: [0, 1200], sequence: ["a", "b"])
-        let asyncSequence2 = TimedAsyncSequence(intervalInMills: [300, 600, 900], sequence: ["c", "d", "e"])
-        let asyncSequence3 = TimedAsyncSequence(intervalInMills: [600, 1100], sequence: ["f", "g"])
+        let asyncSequence1 = TimedAsyncSequence(intervalInMills: [0, 1000, 1000], sequence: ["a", "b", "c"])
+        let asyncSequence2 = TimedAsyncSequence(intervalInMills: [500, 1000], sequence: ["d", "e"])
 
-        let sut = AsyncSequences.Merge(asyncSequence1, asyncSequence2, asyncSequence3)
+        let sut = AsyncSequences.Merge(asyncSequence1, asyncSequence2)
 
         var receivedElements = [String]()
         for try await element in sut {
@@ -187,7 +185,6 @@ final class AsyncSequences_MergeTests: XCTestCase {
             var receivedElements = [Int]()
             do {
                 for try await element in sut {
-                    print("Received element \(element)")
                     receivedElements.append(element)
                     if element == 1 {
                         canSend2Expectation.fulfill()
