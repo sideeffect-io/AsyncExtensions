@@ -42,7 +42,7 @@ AsyncSequences
 * [FlatMapLatest](#FlatMapLatest)
 * [HandleEvents](#HandleEvents)
 * [Assign](#Assign)
-* [Multicast] (#Multicast)
+* [Multicast](#Multicast)
 * [EraseToAnyAsyncSequence](#EraseToAnyAsyncSequence)
 
 More operators and extensions are to come. Pull requests are of course welcome.
