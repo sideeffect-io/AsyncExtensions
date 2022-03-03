@@ -18,7 +18,7 @@ public extension AsyncSequence {
     ///     let multicastedAsyncSequence = ["First", "Second", "Third"]
     ///         .asyncElements
     ///         .map { ($0, Int.random(in: 0...100)) }
-    ///         .handleEvents(onElement: { print("AsyncSequence produces: ($0)") })
+    ///         .handleEvents(onElement: { print("AsyncSequence produces: \($0)") })
     ///         .multicast(stream)
     ///
     ///     Task {
