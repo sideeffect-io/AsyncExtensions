@@ -43,7 +43,7 @@ public final class AsyncPassthroughStream<Element>: Stream, @unchecked Sendable 
     // because of its async nature. Doing so, it means that we could call `send` while the registration is not done and we
     // would loose the value.
     let serialQueue = DispatchQueue(label: UUID().uuidString)
-    
+
     let continuations = AsyncStreams.Continuations<Element>()
 
     public init() {}

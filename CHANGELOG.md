@@ -1,3 +1,7 @@
+**v0.3.0 - Beryllium:**
+
+- new Share operator
+
 **v0.2.1 - Lithium:**
 
 - Enforce the call of onNext in a determinitisc way

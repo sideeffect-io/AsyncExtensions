@@ -5,8 +5,6 @@
 //  Created by Thibault Wittemberg on 31/12/2021.
 //
 
-import Foundation
-
 public extension AsyncSequences {
     /// `Empty` is an AsyncSequence that immediately finishes without emitting values.
     /// 
