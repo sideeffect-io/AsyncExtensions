@@ -17,7 +17,7 @@ public enum AsyncStreams {}
 extension AsyncStreams {
     // Continuations can be accessed in a concurrent context. It is up to the caller to ensure
     // the usage in a safe way (cf Passthrough, CurrrentValue and Replay)
-    final class Continuations<Element>{
+    final class Continuations<Element> {
         var continuations = [AnyHashable: AsyncThrowingStream<Element, Error>.Continuation]()
 
         func send(_ element: Element) {

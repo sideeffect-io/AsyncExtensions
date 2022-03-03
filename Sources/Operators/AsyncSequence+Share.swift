@@ -10,8 +10,8 @@ public extension AsyncSequence {
     ///
     ///  - Tip: ``share()`` is effectively a shortcut for ``multicast()`` using a ``Passthrough`` stream, with an implicit ``autoconnect()``.
     ///
-    /// The following example uses an async sequence as a counter to emit three random numbers. Each element is delayed by 1s to give the seconf loop a chance to
-    /// catch all the values.
+    /// The following example uses an async sequence as a counter to emit three random numbers.
+    /// Each element is delayed by 1s to give the seconf loop a chance to catch all the values.
     ///
     /// ```
     ///     let sharedAsyncSequence = AsyncSequences.From(["first", "second", "third"], interval: .seconds(1))
@@ -40,7 +40,8 @@ public extension AsyncSequence {
     ///     // Stream 2 received: ("Third", 61)
     ///     // Stream 1 received: ("Third", 61)
     /// ```
-    /// In this example, the output shows that the upstream async sequence produces each random value only one time, and then sends the value to both client loops.
+    /// In this example, the output shows that the upstream async sequence produces each random value only one time,
+    /// and then sends the value to both client loops.
     ///
     /// Without the ``share()`` operator, loop 1 receives three random values, followed by loop 2 receiving three different random values.
     ///
@@ -53,7 +54,6 @@ public extension AsyncSequence {
     }
 }
 
-extension AsyncSequences {
-    public typealias AsyncShareSequence<UpstreamAsyncSequence: AsyncSequence> =
-    AsyncMulticastSequence<UpstreamAsyncSequence,AsyncStreams.Passthrough<UpstreamAsyncSequence.Element>>
+public extension AsyncSequences {
+    typealias AsyncShareSequence<S: AsyncSequence> = AsyncMulticastSequence<S, AsyncStreams.Passthrough<S.Element>>
 }

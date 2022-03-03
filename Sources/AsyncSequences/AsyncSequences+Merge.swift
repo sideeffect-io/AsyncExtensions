@@ -90,7 +90,6 @@ public struct AsyncMergeSequence<UpstreamAsyncSequence: AsyncSequence>: AsyncSeq
     //    }
 
     public struct Iterator: AsyncIteratorProtocol {
-
         var downstreamIterator: AsyncStreams.Passthrough<UpstreamElement>.AsyncIterator
         let upstreamAsyncSequenceRegulators: [ConcurrentAccessRegulator<UpstreamAsyncSequence>]
         // let elementCounter = ElementCounter()

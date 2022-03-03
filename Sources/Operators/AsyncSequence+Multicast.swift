@@ -44,7 +44,8 @@ public extension AsyncSequence {
     ///     // Stream 2 received: ("Third", 61)
     ///     // Stream 1 received: ("Third", 61)
     /// ```
-    /// In this example, the output shows that the upstream async sequence produces each random value only one time, and then sends the value to both client loops.
+    /// In this example, the output shows that the upstream async sequence produces each random value only one time,
+    /// and then sends the value to both client loops.
     ///
     /// - Parameter stream: A `Stream` to deliver elements to downstream client loops.
     func multicast<S: Stream>(_ stream: S) -> AsyncMulticastSequence<Self, S> where S.Element == Element {
@@ -79,7 +80,7 @@ where UpstreamAsyncSequence.Element == DownstreamStream.Element {
 
     /// Automates the process of connecting the multicasted async sequence.
     ///
-    ///```
+    /// ```
     ///     let stream = AsyncStreams.Passthrough<(String, Int)>()
     ///     let multicastedAsyncSequence = ["First", "Second", "Third"]
     ///         .asyncElements
