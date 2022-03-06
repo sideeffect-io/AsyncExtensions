@@ -29,6 +29,7 @@ AsyncSequences
 * [Zip2](#Zip2)
 * [Zip3](#Zip3)
 * [Zip](#Zip)
+* [Timer](#Timer)
 
 ### Async Streams
 * [Passthrough](#Passthrough)
@@ -200,6 +201,28 @@ let zippedAsyncSequence = AsyncSequences.Zip(asyncSequence1, asyncSequence2, asy
 for try await element in zippedAsyncSequence {
     print(element) // will print -> [1, 1, 1, 1, 1] [2, 2, 2, 2, 2] [3, 3, 3, 3, 3]
 }
+```
+
+### Timer
+
+`Timer` is an async sequence that repeatedly emits the current date on the given interval, with the given priority.
+
+```swift
+let timer = AsyncSequences.Timer(priority: .high, every: .seconds(1))
+
+Task {
+    for try await element in timer {
+        print(element)
+    }
+}
+
+// will print:
+// 2022-03-06 19:31:22 +0000
+// 2022-03-06 19:31:23 +0000
+// 2022-03-06 19:31:24 +0000
+// 2022-03-06 19:31:25 +0000
+// 2022-03-06 19:31:26 +0000
+// and will stop once timer.cancel() is called or the parent task is cancelled.
 ```
 
 ## Async Streams
