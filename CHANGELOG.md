@@ -1,6 +1,7 @@
 **v0.3.0 - Beryllium:**
 
 - new Share operator
+- new Timer AsyncSequence
 
 **v0.2.1 - Lithium:**
 
