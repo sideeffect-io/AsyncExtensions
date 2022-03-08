@@ -45,6 +45,7 @@ AsyncSequences
 * [Assign](#Assign)
 * [Multicast](#Multicast)
 * [Share](#Share)
+* [WithLatestFrom](#WithLatestFrom)
 * [EraseToAnyAsyncSequence](#EraseToAnyAsyncSequence)
 
 More operators and extensions are to come. Pull requests are of course welcome.
@@ -483,6 +484,33 @@ Task {
 // AsyncSequence produces: ("Third", 61)
 // Stream 2 received: ("Third", 61)
 // Stream 1 received: ("Third", 61)
+```
+
+### WithLatestFrom
+
+`withLatestFrom(_:)` merges two async sequences into a single one by combining each value
+from self with the latest value from the other sequence, if any.
+
+```
+let seq1 = AsyncStreams.CurrentValue<Int>(1)
+let seq2 = AsyncStreams.CurrentValue<String>("1")
+
+let combinedSeq = seq1.withLatestFrom(seq2)
+
+Task {
+   for try await element in combinedSeq {
+       print(element)
+   }
+}
+
+seq1.send(2)
+seq2.send("2")
+seq1.send(3)
+
+// will print:
+(1, "1")
+(2, "1")
+(3, "2")
 ```
 
 ### EraseToAnyAsyncSequence

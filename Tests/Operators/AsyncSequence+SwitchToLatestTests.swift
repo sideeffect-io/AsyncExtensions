@@ -60,7 +60,7 @@ final class AsyncSequence_SwitchToLatestTests: XCTestCase {
                                                   interval: .milliSeconds(30),
                                                   onCancel: {})
 
-        let sut = mainAsyncSequence.switchToLatest()
+        let sut = mainAsyncSequence.switchToLatest(upstreamPriority: .high)
 
         var receivedElements = [Int]()
         let expectedElements = [0, 4, 8, 9, 10, 11]
@@ -81,7 +81,7 @@ final class AsyncSequence_SwitchToLatestTests: XCTestCase {
             LongAsyncSequence(elements: [1], onCancel: {}).eraseToAnyAsyncSequence(),
             AsyncSequences.Fail<Int>(error: expectedError).eraseToAnyAsyncSequence()].asyncElements
         
-        let sut = sourceSequence.switchToLatest()
+        let sut = sourceSequence.switchToLatest(upstreamPriority: .high)
         
         do {
             for try await _ in sut {}
@@ -101,7 +101,7 @@ final class AsyncSequence_SwitchToLatestTests: XCTestCase {
             interval: .milliSeconds(50),
             onCancel: {}
         )}
-        let sut = mappedSequence.switchToLatest()
+        let sut = mappedSequence.switchToLatest(upstreamPriority: .high)
         
         let task = Task {
             var firstElement: Int?
