@@ -51,7 +51,7 @@ public final class AsyncPassthroughStream<Element>: Stream, @unchecked Sendable 
     /// Sends a value to all underlying async sequences
     /// - Parameter element: the value to send
     public func send(_ element: Element) {
-        self.serialQueue.async { [weak self] in
+        self.serialQueue.sync { [weak self] in
             self?.continuations.send(element)
         }
     }
@@ -59,7 +59,7 @@ public final class AsyncPassthroughStream<Element>: Stream, @unchecked Sendable 
     /// Finishes the async sequences with either a normal ending or an error.
     /// - Parameter termination: The termination to finish the async sequence.
     public func send(termination: Termination) {
-        self.serialQueue.async { [weak self] in
+        self.serialQueue.sync { [weak self] in
             self?.continuations.send(termination)
         }
     }
