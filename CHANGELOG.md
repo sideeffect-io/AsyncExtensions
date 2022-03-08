@@ -1,7 +1,8 @@
 **v0.3.0 - Beryllium:**
 
-- new Share operator
-- new Timer AsyncSequence
+- Operators: new Share operator
+- AsyncSequences: new Timer AsyncSequence
+- AsyncStreams: `send()` functions are now synchronous
 
 **v0.2.1 - Lithium:**
 

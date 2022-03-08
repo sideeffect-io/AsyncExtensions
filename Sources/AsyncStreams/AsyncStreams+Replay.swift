@@ -76,7 +76,7 @@ public final class AsyncReplayStream<Element>: Stream, @unchecked Sendable {
     /// Sends a value to all underlying async sequences
     /// - Parameter element: the value to send
     public func send(_ element: Element) {
-        self.serialQueue.async { [weak self] in
+        self.serialQueue.sync { [weak self] in
             self?.storage.push(element)
             self?.continuations.send(element)
         }
@@ -85,7 +85,7 @@ public final class AsyncReplayStream<Element>: Stream, @unchecked Sendable {
     /// Finishes the async sequences with either a normal ending or an error.
     /// - Parameter completion: The termination to finish the async sequence.
     public func send(termination: Termination) {
-        self.serialQueue.async { [weak self] in
+        self.serialQueue.sync { [weak self] in
             self?.continuations.send(termination)
             self?.storage.clear()
         }
