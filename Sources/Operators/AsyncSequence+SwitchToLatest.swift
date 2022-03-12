@@ -22,10 +22,11 @@ public extension AsyncSequence where Element: AsyncSequence {
     /// // will print:
     /// a3, b3
     /// ```
+    /// - parameter upstreamPriority: can be used to change the priority of the task that supports the iteration over the upstream sequence (nil by default)
     ///
     /// - Returns: The async sequence that republishes elements sent by the most recently received async sequence.
-    func switchToLatest() -> AsyncSwitchToLatestSequence<Self> {
-        AsyncSwitchToLatestSequence<Self>(self)
+    func switchToLatest(upstreamPriority: TaskPriority? = nil) -> AsyncSwitchToLatestSequence<Self> {
+        AsyncSwitchToLatestSequence<Self>(self, upstreamPriority: upstreamPriority)
     }
 }
 
@@ -34,13 +35,21 @@ public struct AsyncSwitchToLatestSequence<UpstreamAsyncSequence: AsyncSequence>:
     public typealias AsyncIterator = Iterator
 
     let upstreamAsyncSequence: UpstreamAsyncSequence
+    let upstreamPriority: TaskPriority?
 
-    public init(_ upstreamAsyncSequence: UpstreamAsyncSequence) {
+    public init(
+        _ upstreamAsyncSequence: UpstreamAsyncSequence,
+        upstreamPriority: TaskPriority?
+    ) {
         self.upstreamAsyncSequence = upstreamAsyncSequence
+        self.upstreamPriority = upstreamPriority
     }
 
     public func makeAsyncIterator() -> AsyncIterator {
-        Iterator(upstreamIterator: self.upstreamAsyncSequence.makeAsyncIterator())
+        Iterator(
+            upstreamIterator: self.upstreamAsyncSequence.makeAsyncIterator(),
+            upstreamPriority: self.upstreamPriority
+        )
     }
 
     final class UpstreamIteratorManager {
@@ -49,10 +58,15 @@ public struct AsyncSwitchToLatestSequence<UpstreamAsyncSequence: AsyncSequence>:
         var hasStarted = false
         var currentTask: Task<Element?, Error>?
 
+        let upstreamPriority: TaskPriority?
         let serialQueue = DispatchQueue(label: UUID().uuidString)
 
-        init(upstreamIterator: UpstreamAsyncSequence.AsyncIterator) {
+        init(
+            upstreamIterator: UpstreamAsyncSequence.AsyncIterator,
+            upstreamPriority: TaskPriority?
+        ) {
             self.upstreamIterator = upstreamIterator
+            self.upstreamPriority = upstreamPriority
         }
 
         func setCurrentTask(task: Task<Element?, Error>) {
@@ -70,7 +84,7 @@ public struct AsyncSwitchToLatestSequence<UpstreamAsyncSequence: AsyncSequence>:
                 }
             }
 
-            Task { [weak self] in
+            Task(priority: self.upstreamPriority) { [weak self] in
                 while let nextChildSequence = try await self?.upstreamIterator.next() {
                     self?.serialQueue.async { [weak self] in
                         self?.childIterators.removeFirst()
@@ -92,8 +106,14 @@ public struct AsyncSwitchToLatestSequence<UpstreamAsyncSequence: AsyncSequence>:
     public struct Iterator: AsyncIteratorProtocol {
         let upstreamIteratorManager: UpstreamIteratorManager
 
-        init(upstreamIterator: UpstreamAsyncSequence.AsyncIterator) {
-            self.upstreamIteratorManager = UpstreamIteratorManager(upstreamIterator: upstreamIterator)
+        init(
+            upstreamIterator: UpstreamAsyncSequence.AsyncIterator,
+            upstreamPriority: TaskPriority?
+        ) {
+            self.upstreamIteratorManager = UpstreamIteratorManager(
+                upstreamIterator: upstreamIterator,
+                upstreamPriority: upstreamPriority
+            )
         }
 
         public mutating func next() async throws -> Element? {
