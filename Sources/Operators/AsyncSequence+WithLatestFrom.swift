@@ -35,7 +35,8 @@ public extension AsyncSequence {
     ///
     ///  - returns: An async sequence emitting the result of combining each value of the self
     ///  with the latest value from the other sequence. If the other sequence finishes, the returned sequence
-    ///  will finish with the next value from self.
+    ///  will finish with the next value from self. if the other sequence fails, the returned sequence will fail
+    ///  with the next value from self.
     ///
     func withLatestFrom<OtherAsyncSequence: AsyncSequence>(
         _ other: OtherAsyncSequence,
@@ -77,6 +78,8 @@ public struct AsyncWithLatestFromSequence<UpstreamAsyncSequence: AsyncSequence, 
 
     final class OtherIteratorManager {
         var otherElement: OtherAsyncSequence.Element?
+        var otherError: Error?
+
         var otherIterator: OtherAsyncSequence.AsyncIterator
         var hasStarted = false
 
@@ -98,12 +101,16 @@ public struct AsyncWithLatestFromSequence<UpstreamAsyncSequence: AsyncSequence, 
             self.otherElement = try await self.otherIterator.next()
 
             Task(priority: self.otherPriority) { [weak self] in
-                while let element = try await self?.otherIterator.next() {
-                    guard !Task.isCancelled else { break }
+                do {
+                    while let element = try await self?.otherIterator.next() {
+                        guard !Task.isCancelled else { break }
 
-                    self?.otherElement = element
+                        self?.otherElement = element
+                    }
+                    self?.otherElement = nil
+                } catch {
+                    self?.otherError = error
                 }
-                self?.otherElement = nil
             }
         }
     }
@@ -131,6 +138,10 @@ public struct AsyncWithLatestFromSequence<UpstreamAsyncSequence: AsyncSequence, 
 
             let upstreamElement = try await self.upstreamAsyncIterator.next()
             let otherElement = self.otherIteratorManager.otherElement
+
+            if let otherError = self.otherIteratorManager.otherError {
+                throw otherError
+            }
 
             guard let nonNilUpstreamElement = upstreamElement,
                   let nonNilOtherElement = otherElement else {
