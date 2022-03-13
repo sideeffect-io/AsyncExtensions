@@ -22,7 +22,8 @@ public extension AsyncSequence where Element: AsyncSequence {
     /// // will print:
     /// a3, b3
     /// ```
-    /// - parameter upstreamPriority: can be used to change the priority of the task that supports the iteration over the upstream sequence (nil by default)
+    /// - parameter upstreamPriority: can be used to change the priority of the task that supports the iteration
+    /// over the upstream sequence (nil by default)
     ///
     /// - Returns: The async sequence that republishes elements sent by the most recently received async sequence.
     func switchToLatest(upstreamPriority: TaskPriority? = nil) -> AsyncSwitchToLatestSequence<Self> {

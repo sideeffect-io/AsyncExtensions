@@ -78,7 +78,7 @@ final class AsyncSequence_WithLatestFromTests: XCTestCase {
         wait(for: [sutIsFinishedExpectation], timeout: 2)
     }
 
-    func test_withLatestFrom_finishes_if_upstream_finishes() async throws {
+    func test_withLatestFrom_finishes_when_upstream_finishes() async throws {
         let upstream = AsyncStreams.CurrentValue<Int>(1)
         let other = AsyncStreams.CurrentValue<String>("1")
 
@@ -124,5 +124,56 @@ final class AsyncSequence_WithLatestFromTests: XCTestCase {
         hasCancelExceptation.fulfill() // we can release the lock in the for loop
 
         wait(for: [taskHasFinishedExpectation], timeout: 5) // task has been cancelled and has finished
+    }
+
+    func test_withLatestFrom_throws_when_other_throws() {
+        let canSendErrorInOtherSequenceExpectation = expectation(description: "The first element has been emitted by the upstrean sequence")
+        let secondElementSentInUpstreamExpectation = expectation(description: "2 has been sent in the upstream sequence")
+        let otherHasFailedExpectation = expectation(description: "The other sequence has failed")
+        let sutHasFailedExpectation = expectation(description: "The sut has failed")
+
+        let upstream = AsyncStreams.CurrentValue<Int>(1)
+        let other = AsyncStreams.CurrentValue<String>("1")
+
+        let sut = upstream.withLatestFrom(other, otherPriority: .high)
+
+        // monitoring the other sequence's error
+        Task(priority: .high) {
+            do {
+                try await other.collect { _ in }
+            } catch {
+                otherHasFailedExpectation.fulfill()
+            }
+        }
+
+        Task(priority: .low) {
+            var firstElement: (Int, String)?
+            do {
+                for try await element in sut {
+                    firstElement = element
+                    if firstElement?.0 == 1 {
+                        // first element is received, make other fail
+                        canSendErrorInOtherSequenceExpectation.fulfill()
+                        wait(for: [secondElementSentInUpstreamExpectation], timeout: 5)
+                    }
+                }
+            } catch {
+                XCTAssertEqual(firstElement?.0, 1)
+                XCTAssertEqual(firstElement?.1, "1")
+                sutHasFailedExpectation.fulfill()
+            }
+        }
+
+        wait(for: [canSendErrorInOtherSequenceExpectation], timeout: 5) // one element has been emitted, we can send error in the other seq
+
+        other.send(termination: .failure(NSError(domain: "", code: 1)))
+
+        wait(for: [otherHasFailedExpectation], timeout: 5)
+
+        upstream.send(2)
+
+        secondElementSentInUpstreamExpectation.fulfill() // we can release the lock
+
+        wait(for: [sutHasFailedExpectation], timeout: 5) // task has been cancelled and has finished
     }
 }
