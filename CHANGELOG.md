@@ -1,6 +1,7 @@
 **v0.3.0 - Beryllium:**
 
 - Operators: new Share operator
+- Operators: new withLatestFrom operator
 - AsyncSequences: new Timer AsyncSequence
 - AsyncStreams: `send()` functions are now synchronous
 
