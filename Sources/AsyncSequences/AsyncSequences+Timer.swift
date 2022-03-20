@@ -58,6 +58,7 @@ public class AsyncTimerSequence: AsyncSequence {
                         try await Task.sleep(nanoseconds: interval.value)
                         continuation.yield(Date())
                     }
+                    continuation.finish()
                 } catch is CancellationError {
                     continuation.finish()
                 } catch {
