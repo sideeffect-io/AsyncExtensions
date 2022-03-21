@@ -35,6 +35,7 @@ AsyncSequences
 * [Passthrough](#Passthrough)
 * [CurrentValue](#CurrentValue)
 * [Replay](#Replay)
+* [Streamed](#Streamed)
 
 ### Operators
 * [Collect](#Collect)
@@ -295,6 +296,34 @@ let replay = AsyncStreams.Replay<Int>(bufferSize: 3)
 for try await element in replay {
     print(element) // will print 3, 4, 5
 }
+```
+
+### Streamed
+
+`Streamed` is a property wrapper that streams a property as an AsyncSequence. It is a structured concurrency equivalent to **Combine @Published**.
+
+```swift
+class Weather {
+    @Streamed var temperature: Double
+    init(temperature: Double) {
+        self.temperature = temperature
+    }
+}
+
+let weather = Weather(temperature: 20)
+Task {
+    for try await element in weather.$temperature {
+        print ("Temperature now: \(element)")
+    }
+}
+
+// ... later in the application flow
+
+weather.temperature = 25
+
+// will print:
+// Temperature now: 20.0
+// Temperature now: 25.0
 ```
 
 ## Operators

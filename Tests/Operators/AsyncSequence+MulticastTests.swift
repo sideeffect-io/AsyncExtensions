@@ -73,7 +73,7 @@ final class AsyncSequence_MulticastTests: XCTestCase {
         let stream = AsyncStreams.Passthrough<Int>()
         let sut = spyUpstreamSequence.multicast(stream)
 
-        Task {
+        Task(priority: .high) {
             var receivedElement = [Int]()
             for try await element in sut {
                 receivedElement.append(element)
@@ -82,7 +82,7 @@ final class AsyncSequence_MulticastTests: XCTestCase {
             tasksHaveFinishedExpectation.fulfill()
         }
 
-        Task {
+        Task(priority: .high) {
             var receivedElement = [Int]()
             for try await element in sut {
                 receivedElement.append(element)
