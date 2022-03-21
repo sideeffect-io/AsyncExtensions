@@ -1,3 +1,8 @@
+**v0.4.0 - Bore:**
+
+- AsyncStreams: new @Streamed property wrapper
+- AsyncSequences: finish Timer when canceled
+
 **v0.3.0 - Beryllium:**
 
 - Operators: new Share operator
