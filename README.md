@@ -48,6 +48,7 @@ AsyncSequences
 * [Share](#Share)
 * [WithLatestFrom](#WithLatestFrom)
 * [EraseToAnyAsyncSequence](#EraseToAnyAsyncSequence)
+* [MapError](#MapError)
 
 More operators and extensions are to come. Pull requests are of course welcome.
 
@@ -545,3 +546,21 @@ seq1.send(3)
 ### EraseToAnyAsyncSequence
 
 `eraseToAnyAsyncSequence()` type-erases the async sequence into an AnyAsyncSequence.
+
+### MapError
+
+`mapError(_:)` transforms error from upstream async sequence.
+
+```
+struct CustomError: Error { }
+
+let failSequence = AsyncSequences.Fail<Int, Swift.Error>(error: NSError(domain: "", code: 1))
+
+do {
+    for try await element in failSequence.mapError({ _ in CustomError() }) {
+        print(element) // will never execute
+    }
+} catch {
+    print(error) // CustomError()
+}
+```
