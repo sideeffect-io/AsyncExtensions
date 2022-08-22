@@ -6,38 +6,39 @@
 //
 
 public extension AsyncSequence {
-    /// Type erase the AsyncSequence into an AnyAsyncSequence.
-    /// - Returns: A type erased AsyncSequence.
-    func eraseToAnyAsyncSequence() -> AnyAsyncSequence<Element> {
-        AnyAsyncSequence(self)
-    }
+  /// Type erase the AsyncSequence into an AnyAsyncSequence.
+  /// - Returns: A type erased AsyncSequence.
+  func eraseToAnyAsyncSequence() -> AnyAsyncSequence<Element> where Self: Sendable {
+    AnyAsyncSequence(self)
+  }
 }
 
 /// Type erased version of an AsyncSequence.
 public struct AnyAsyncSequence<Element>: AsyncSequence {
-    public typealias Element = Element
-    public typealias AsyncIterator = Iterator
+  public typealias AsyncIterator = AnyAsyncIterator<Element>
 
-    private let makeAsyncIteratorClosure: () -> AsyncIterator
+  private let makeAsyncIteratorClosure: @Sendable () -> AsyncIterator
 
-    public init<BaseAsyncSequence: AsyncSequence>(_ baseAsyncSequence: BaseAsyncSequence) where BaseAsyncSequence.Element == Element {
-        self.makeAsyncIteratorClosure = { Iterator(baseIterator: baseAsyncSequence.makeAsyncIterator()) }
-    }
+  public init<Base: AsyncSequence>(_ base: Base) where Base.Element == Element, Base: Sendable {
+    self.makeAsyncIteratorClosure = { AnyAsyncIterator(base: base.makeAsyncIterator()) }
+  }
 
-    public func makeAsyncIterator() -> AsyncIterator {
-        Iterator(baseIterator: self.makeAsyncIteratorClosure())
-    }
+  public func makeAsyncIterator() -> AsyncIterator {
+    self.makeAsyncIteratorClosure()
+  }
+}
 
-    public struct Iterator: AsyncIteratorProtocol {
-        private let nextClosure: () async throws -> Element?
+public struct AnyAsyncIterator<Element>: AsyncIteratorProtocol {
+  public typealias Element = Element
 
-        public init<BaseAsyncIterator: AsyncIteratorProtocol>(baseIterator: BaseAsyncIterator) where BaseAsyncIterator.Element == Element {
-            var baseIterator = baseIterator
-            self.nextClosure = { try await baseIterator.next() }
-        }
+  private let nextClosure: () async throws -> Element?
 
-        public func next() async throws -> Element? {
-            try await self.nextClosure()
-        }
-    }
+  public init<Base: AsyncIteratorProtocol>(base: Base) where Base.Element == Element {
+    var mutableBase = base
+    self.nextClosure = { try await mutableBase.next() }
+  }
+
+  public mutating func next() async throws -> Element? {
+    try await self.nextClosure()
+  }
 }
