@@ -1,6 +1,6 @@
 //
 //  AsyncSequence+ShareTests.swift
-//  
+//
 //
 //  Created by Thibault Wittemberg on 03/03/2022.
 //
@@ -13,13 +13,12 @@ final class AsyncSequence_ShareTests: XCTestCase {
         let tasksHaveFinishedExpectation = expectation(description: "the tasks have finished")
         tasksHaveFinishedExpectation.expectedFulfillmentCount = 2
 
-        let sut = AsyncSequences
-            .From(["first", "second", "third"], interval: .milliSeconds(500))
+        let sut = AsyncLazySequence(["first", "second", "third"])
             .share()
 
         Task {
             var received = [String]()
-            try await sut
+            await sut
                 .collect { received.append($0) }
             XCTAssertEqual(received, ["first", "second", "third"])
             tasksHaveFinishedExpectation.fulfill()
@@ -27,7 +26,7 @@ final class AsyncSequence_ShareTests: XCTestCase {
 
         Task {
             var received = [String]()
-            try await sut
+            await sut
                 .collect { received.append($0) }
             XCTAssertEqual(received, ["first", "second", "third"])
             tasksHaveFinishedExpectation.fulfill()
