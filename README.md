@@ -3,7 +3,7 @@
 
 <p align="left">
 <img src="https://github.com/AsyncCommunity/AsyncExtensions/actions/workflows/ci.yml/badge.svg?branch=main" alt="Build Status" title="Build Status">
-<a href="https://codecov.io/gh/AsyncCommunity/AsyncExtensions"><img src="https://codecov.io/gh/AsyncCommunity/AsyncExtensions/branch/main/graph/badge.svg?token=NTGOIK6CSE"/></a>
+<a href="https://codecov.io/gh/sideeffect-io/AsyncExtensions"><img src="https://codecov.io/gh/sideeffect-io/AsyncExtensions/branch/main/graph/badge.svg?token=NTGOIK6CSE"/></a>
 <a href="https://github.com/apple/swift-package-manager" target="_blank"><img src="https://img.shields.io/badge/Swift%20Package%20Manager-compatible-brightgreen.svg" alt="AsyncExtensions supports Swift Package Manager (SPM)"></a>
 <img src="https://img.shields.io/badge/platforms-iOS%2013%20%7C%20macOS 10.15%20%7C%20tvOS%2013%20%7C%20watchOS%206-333333.svg" />
 
