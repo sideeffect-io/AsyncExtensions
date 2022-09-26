@@ -16,7 +16,7 @@
 * [AsyncThrowingBufferedChannel](./Sources/AsyncChannels/AsyncThrowingBufferedChannel.swift): Throwing buffered communication channel between tasks
 
 ### Subjects
-* [AsyncPassthroughSubject](./Sources/AsyncSubjects/AsyncPassthroughSubject.swift): Subject with a shared output
+* [AsyncPassthroughSubject](./Sources/AsyncSubjects/AsyncPassthroughSubject.swift): Subject with a shared output. The elements are not shared and will be spread across consumers (same as AsyncStream)
 * [AsyncThrowingPassthroughSubject](./Sources/AsyncSubjects/AsyncThrowingPassthroughSubject.swift): Throwing subject with a shared output
 * [AsyncCurrentValueSubject](./Sources/AsyncSubjects/AsyncCurrentValueSubject.swift): Subject with a shared output. Maintain an replays its current value
 * [AsyncThrowingCurrentValueSubject](./Sources/AsyncSubjects/AsyncThrowingCurrentValueSubject.swift): Throwing subject with a shared output. Maintain an replays its current value
@@ -45,13 +45,13 @@
 ### Operators
 * [`handleEvents()`](./Sources/Operators/AsyncHandleEventsSequence.swift): Executes closures during the lifecycle of the self
 * [`mapToResult()`](./Sources/Operators/AsyncMapToResultSequence.swift): Maps elements and failure from self to a `Result` type
-* [`multicast(_:)`](./Sources/Operators/AsyncMulticastSequence.swift): Shares values from self to several consumers thanks to a provided Suject
 * [`prepend(_:)`](./Sources/Operators/AsyncPrependSequence.swift): Prepends an element to self
 * [`scan(_:_:)`](./Sources/Operators/AsyncScanSequence.swift): Transforms elements from self by providing the current element to a closure along with the last value returned by the closure
 * [`assign(_:)`](./Sources/Operators/AsyncSequence+Assign.swift): Assigns elements from self to a property
 * [`collect(_:)`](./Sources/Operators/AsyncSequence+Collect.swift): Iterate over elements from self and execute a closure
 * [`eraseToAnyAsyncSequence()`](./Sources/Operators/AsyncSequence+EraseToAnyAsyncSequence.swift): Erases to AnyAsyncSequence
 * [`flatMapLatest(_:)`](./Sources/Operators/AsyncSequence+FlatMapLatest.swift): Transforms elements from self into a `AsyncSequence` and republishes elements sent by the most recently received `AsyncSequence` when self is an `AsyncSequence` of `AsyncSequence`
+* [`multicast(_:)`](./Sources/Operators/AsyncMulticastSequence.swift): Shares values from self to several consumers thanks to a provided Suject
 * [`share()`](./Sources/Operators/AsyncSequence+Share.swift): Shares values from self to several consumers
 * [`switchToLatest()`](./Sources/Operators/AsyncSwitchToLatestSequence.swift): Republishes elements sent by the most recently received `AsyncSequence` when self is an `AsyncSequence` of `AsyncSequence`
 
