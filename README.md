@@ -28,6 +28,8 @@ Include `"AsyncExtensions"` as a dependency for your executable target:
 
 Finally, add `import AsyncExtensions` to your source code.
 
+## Features
+
 ### Channels
 * [AsyncBufferedChannel](./Sources/AsyncChannels/AsyncBufferedChannel.swift): Buffered communication channel between tasks. The elements are not shared and will be spread across consumers (same as 
 AsyncStream)
