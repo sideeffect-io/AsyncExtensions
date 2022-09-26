@@ -11,12 +11,30 @@
 
 **AsyncExtensions** can be seen as a companion to Apple [swift-async-algorithms](https://github.com/apple/swift-async-algorithms). For now there is an overlap between both libraries, but when **swift-async-algorithms** becomes stable the overlapping operators while be deprecated in **AsyncExtensions**. Nevertheless **AsyncExtensions** will continue to provide the operators that the community needs and are not provided by Apple.
 
+## Adding AsyncExtensions as a Dependency
+
+To use the `AsyncExtensions` library in a SwiftPM project, 
+add the following line to the dependencies in your `Package.swift` file:
+
+```swift
+.package(url: "https://github.com/sideeffect-io/AsyncExtensions"),
+```
+
+Include `"AsyncExtensions"` as a dependency for your executable target:
+
+```swift
+.target(name: "<target>", dependencies: ["AsyncExtensions"]),
+```
+
+Finally, add `import AsyncExtensions` to your source code.
+
 ### Channels
-* [AsyncBufferedChannel](./Sources/AsyncChannels/AsyncBufferedChannel.swift): Buffered communication channel between tasks
+* [AsyncBufferedChannel](./Sources/AsyncChannels/AsyncBufferedChannel.swift): Buffered communication channel between tasks. The elements are not shared and will be spread across consumers (same as 
+AsyncStream)
 * [AsyncThrowingBufferedChannel](./Sources/AsyncChannels/AsyncThrowingBufferedChannel.swift): Throwing buffered communication channel between tasks
 
 ### Subjects
-* [AsyncPassthroughSubject](./Sources/AsyncSubjects/AsyncPassthroughSubject.swift): Subject with a shared output. The elements are not shared and will be spread across consumers (same as AsyncStream)
+* [AsyncPassthroughSubject](./Sources/AsyncSubjects/AsyncPassthroughSubject.swift): Subject with a shared output
 * [AsyncThrowingPassthroughSubject](./Sources/AsyncSubjects/AsyncThrowingPassthroughSubject.swift): Throwing subject with a shared output
 * [AsyncCurrentValueSubject](./Sources/AsyncSubjects/AsyncCurrentValueSubject.swift): Subject with a shared output. Maintain an replays its current value
 * [AsyncThrowingCurrentValueSubject](./Sources/AsyncSubjects/AsyncThrowingCurrentValueSubject.swift): Throwing subject with a shared output. Maintain an replays its current value
