@@ -1,3 +1,7 @@
+**v0.5.1 - Nitrogen:**
+
+This version removes compilation unsafe flags
+
 **v0.5.0 - Carbon:**
 
 This version brings a lot of internal refactoring and breaking changes + some new operators.
