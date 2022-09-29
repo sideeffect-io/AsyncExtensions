@@ -21,13 +21,14 @@ let package = Package(
         .target(
             name: "AsyncExtensions",
             dependencies: [.product(name: "Collections", package: "swift-collections")],
-            path: "Sources",
-            swiftSettings: [
-              .unsafeFlags([
-                "-Xfrontend", "-warn-concurrency",
-                "-Xfrontend", "-enable-actor-data-race-checks",
-              ])
-            ]
+            path: "Sources"
+//            ,
+//            swiftSettings: [
+//              .unsafeFlags([
+//                "-Xfrontend", "-warn-concurrency",
+//                "-Xfrontend", "-enable-actor-data-race-checks",
+//              ])
+//            ]
         ),
         .testTarget(
             name: "AsyncExtensionsTests",
