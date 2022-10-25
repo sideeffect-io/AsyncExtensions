@@ -218,6 +218,7 @@ where Base.Element: AsyncSequence, Base: Sendable, Base.Element.Element: Sendabl
     }
 
     public mutating func next() async rethrows -> Element? {
+      guard !Task.isCancelled else { return nil }
       self.startBase()
 
       return try await withTaskCancellationHandler { [baseTask] in
