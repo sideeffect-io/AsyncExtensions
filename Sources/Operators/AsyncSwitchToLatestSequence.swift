@@ -221,8 +221,11 @@ where Base.Element: AsyncSequence, Base: Sendable, Base.Element.Element: Sendabl
       guard !Task.isCancelled else { return nil }
       self.startBase()
 
-      return try await withTaskCancellationHandler { [baseTask] in
+      return try await withTaskCancellationHandler { [baseTask, state] in
         baseTask?.cancel()
+        state.withCriticalRegion {
+          $0.childTask?.cancel()
+        }
       } operation: {
         while true {
           let childTask = await withUnsafeContinuation { [state] (continuation: UnsafeContinuation<Task<ChildValue?, Never>?, Never>) in
