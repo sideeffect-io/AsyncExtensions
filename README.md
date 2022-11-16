@@ -71,7 +71,7 @@ AsyncStream)
 * [`collect(_:)`](./Sources/Operators/AsyncSequence+Collect.swift): Iterate over elements from self and execute a closure
 * [`eraseToAnyAsyncSequence()`](./Sources/Operators/AsyncSequence+EraseToAnyAsyncSequence.swift): Erases to AnyAsyncSequence
 * [`flatMapLatest(_:)`](./Sources/Operators/AsyncSequence+FlatMapLatest.swift): Transforms elements from self into a `AsyncSequence` and republishes elements sent by the most recently received `AsyncSequence` when self is an `AsyncSequence` of `AsyncSequence`
-* [`multicast(_:)`](./Sources/Operators/AsyncMulticastSequence.swift): Shares values from self to several consumers thanks to a provided Suject
+* [`multicast(_:)`](./Sources/Operators/AsyncMulticastSequence.swift): Shares values from self to several consumers thanks to a provided Subject
 * [`share()`](./Sources/Operators/AsyncSequence+Share.swift): Shares values from self to several consumers
 * [`switchToLatest()`](./Sources/Operators/AsyncSwitchToLatestSequence.swift): Republishes elements sent by the most recently received `AsyncSequence` when self is an `AsyncSequence` of `AsyncSequence`
 
