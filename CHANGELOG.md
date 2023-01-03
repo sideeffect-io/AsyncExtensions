@@ -1,3 +1,9 @@
+**v0.5.2 - Oxygen:**
+
+This version is a bug fix version.
+
+- Multicast: don't cancel the upstream sequence when a client is cancelled
+
 **v0.5.1 - Nitrogen:**
 
 This version removes compilation unsafe flags
