@@ -29,7 +29,7 @@ final class AsyncJustSequenceTests: XCTestCase {
     let justSequence = AsyncJustSequence<Int>(1)
 
     let task = Task {
-      wait(for: [hasCancelledExpectation], timeout: 1)
+      await fulfillment(of: [hasCancelledExpectation], timeout: 1)
       for await _ in justSequence {
         XCTFail("The AsyncSequence should not output elements")
       }
