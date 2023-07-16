@@ -1,3 +1,10 @@
+**v0.5.3 - Fluorine:**
+
+This version is a bug fix version to remove warnings in the latest Xcode/Swift.
+
+- Updated renamed functions to use updated name/signatures in source code.
+- Use async enabled expectation waiting facilities in test code.
+
 **v0.5.2 - Oxygen:**
 
 This version is a bug fix version.

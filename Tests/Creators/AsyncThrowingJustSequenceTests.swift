@@ -54,7 +54,7 @@ final class AsyncThrowingJustSequenceTests: XCTestCase {
     let justSequence = AsyncThrowingJustSequence<Int>(1)
 
     let task = Task {
-      wait(for: [hasCancelledExpectation], timeout: 1)
+      await fulfillment(of: [hasCancelledExpectation], timeout: 1)
       for try await _ in justSequence {
         XCTFail("The AsyncSequence should not output elements")
       }
