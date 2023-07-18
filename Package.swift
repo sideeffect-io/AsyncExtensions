@@ -16,7 +16,10 @@ let package = Package(
             name: "AsyncExtensions",
             targets: ["AsyncExtensions"]),
     ],
-    dependencies: [.package(url: "https://github.com/apple/swift-collections.git", .upToNextMajor(from: "1.0.3"))],
+    dependencies: [
+        .package(url: "https://github.com/apple/swift-collections.git", .upToNextMajor(from: "1.0.3")),
+        .package(url: "https://github.com/OpenCombine/OpenCombine.git", from: "0.14.0"),
+    ],
     targets: [
         .target(
             name: "AsyncExtensions",
@@ -32,7 +35,10 @@ let package = Package(
         ),
         .testTarget(
             name: "AsyncExtensionsTests",
-            dependencies: ["AsyncExtensions"],
+            dependencies: [
+                "AsyncExtensions",
+                .product(name: "OpenCombine", package: "OpenCombine", condition: .when(platforms: [.linux])),
+            ],
             path: "Tests"),
     ]
 )
