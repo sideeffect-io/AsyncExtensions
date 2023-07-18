@@ -6,7 +6,11 @@
 //
 
 import AsyncExtensions
+#if canImport(Combine)
 import Combine
+#elseif canImport(OpenCombine)
+import OpenCombine
+#endif
 import XCTest
 
 final class StreamedTests: XCTestCase {
