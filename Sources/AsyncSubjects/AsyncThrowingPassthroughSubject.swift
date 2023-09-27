@@ -53,31 +53,28 @@ public final class AsyncThrowingPassthroughSubject<Element, Failure: Error>: Asy
   /// Sends a value to all consumers
   /// - Parameter element: the value to send
   public func send(_ element: Element) {
-    let channels = self.state.withCriticalRegion { state in
-      state.channels.values
-    }
-
-    for channel in channels {
-      channel.send(element)
+    self.state.withCriticalRegion { state in
+      for channel in state.channels.values {
+        channel.send(element)
+      }
     }
   }
 
   /// Finishes the subject with either a normal ending or an error.
   /// - Parameter termination: The termination to finish the subject
   public func send(_ termination: Termination<Failure>) {
-    let channels = self.state.withCriticalRegion { state -> [AsyncThrowingBufferedChannel<Element, Error>] in
+    self.state.withCriticalRegion { state in
       state.terminalState = termination
       let channels = Array(state.channels.values)
       state.channels.removeAll()
-      return channels
-    }
 
-    for channel in channels {
-      switch termination {
-        case .finished:
-          channel.finish()
-        case .failure(let error):
-          channel.fail(error)
+      for channel in channels {
+        switch termination {
+          case .finished:
+            channel.finish()
+          case .failure(let error):
+            channel.fail(error)
+        }
       }
     }
   }
@@ -132,10 +129,10 @@ public final class AsyncThrowingPassthroughSubject<Element, Failure: Error>: Asy
     }
 
     public mutating func next() async throws -> Element? {
-      try await withTaskCancellationHandler { [unregister] in
-        unregister()
-      } operation: {
+      try await withTaskCancellationHandler {
         try await self.iterator.next()
+      } onCancel: { [unregister] in
+        unregister()
       }
     }
   }

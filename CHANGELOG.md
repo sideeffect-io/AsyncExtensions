@@ -1,3 +1,10 @@
+**v0.5.2 - Oxygen:**
+
+This version is a bug fix version.
+
+- Multicast: don't cancel the upstream sequence when a client is cancelled (https://github.com/sideeffect-io/AsyncExtensions/pull/32)
+- SwitchToLatest: fix a situation where child task could hang indefinitely (https://github.com/sideeffect-io/AsyncExtensions/pull/20)
+
 **v0.5.1 - Nitrogen:**
 
 This version removes compilation unsafe flags
