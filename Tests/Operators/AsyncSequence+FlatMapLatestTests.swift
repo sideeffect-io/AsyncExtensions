@@ -5,6 +5,7 @@
 //  Created by Thibault Wittemberg on 10/01/2022.
 //
 
+import AsyncAlgorithms
 @testable import AsyncExtensions
 import XCTest
 
@@ -166,10 +167,10 @@ final class AsyncSequence_FlatMapLatestTests: XCTestCase {
   func testFlatMapLatest_propagates_errors() async {
     let expectedError = MockError(code: Int.random(in: 0...100))
 
-    let sut = AsyncLazySequence([1, 2])
+    let sut = [1, 2].async
       .flatMapLatest { element -> AnyAsyncSequence<Int> in
         if element == 1 {
-          return AsyncLazySequence([1]).eraseToAnyAsyncSequence()
+          return [1].async.eraseToAnyAsyncSequence()
         }
 
         return AsyncFailSequence<Int>(expectedError).eraseToAnyAsyncSequence()

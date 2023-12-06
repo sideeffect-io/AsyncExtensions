@@ -5,6 +5,7 @@
 //  Created by Thibault Wittemberg on 04/01/2022.
 //
 
+import AsyncAlgorithms
 @testable import AsyncExtensions
 import XCTest
 
@@ -102,10 +103,10 @@ final class AsyncSwitchToLatestSequenceTests: XCTestCase {
 
   func testSwitchToLatest_propagates_errors_when_base_sequence_fails() async {
     let sequences = [
-      AsyncLazySequence([1, 2, 3]).eraseToAnyAsyncSequence(),
-      AsyncLazySequence([4, 5, 6]).eraseToAnyAsyncSequence(),
-      AsyncLazySequence([7, 8, 9]).eraseToAnyAsyncSequence(), // should fail here
-      AsyncLazySequence([10, 11, 12]).eraseToAnyAsyncSequence(),
+      [1, 2, 3].async.eraseToAnyAsyncSequence(),
+      [4, 5, 6].async.eraseToAnyAsyncSequence(),
+      [7, 8, 9].async.eraseToAnyAsyncSequence(), // should fail here
+      [10, 11, 12].async.eraseToAnyAsyncSequence(),
     ]
 
     let sourceSequence = LongAsyncSequence(elements: sequences, interval: .milliseconds(100), failAt: 2)
