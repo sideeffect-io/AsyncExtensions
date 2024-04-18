@@ -182,7 +182,8 @@ final class AsyncMulticastSequenceTests: XCTestCase {
     let taskHasFinishedExpectation = expectation(description: "Task has finished")
     
     let stream = AsyncThrowingPassthroughSubject<Int, Error>()
-    let sut = AsyncLazySequence<[Int]>([1, 2, 3, 4, 5])
+    let sut = [1, 2, 3, 4, 5]
+      .async
       .multicast(stream)
       .autoconnect()
     
