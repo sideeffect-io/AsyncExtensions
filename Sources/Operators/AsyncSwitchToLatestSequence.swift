@@ -46,7 +46,7 @@ where Base.Element: AsyncSequence, Base: Sendable, Base.Element.Element: Sendabl
     enum BaseState {
       case notStarted
       case idle
-      case waitingForChildIterator(UnsafeContinuation<Task<ChildValue?, Never>?, Never>)
+      case waitingForChildIterator(CheckedContinuation<Task<ChildValue?, Never>?, Never>)
       case newChildIteratorAvailable(Result<Base.Element.AsyncIterator, Error>)
       case processingChildIterator(Result<Base.Element.AsyncIterator, Error>)
       case finished(Result<Base.Element.AsyncIterator, Error>?)
@@ -92,7 +92,7 @@ where Base.Element: AsyncSequence, Base: Sendable, Base.Element.Element: Sendabl
     }
 
     enum BaseDecision {
-      case resumeNext(UnsafeContinuation<Task<ChildValue?, Never>?, Never>, Task<ChildValue?, Never>?)
+      case resumeNext(CheckedContinuation<Task<ChildValue?, Never>?, Never>, Task<ChildValue?, Never>?)
       case cancelPreviousChildTask(Task<ChildValue?, Never>?)
     }
 
@@ -221,14 +221,9 @@ where Base.Element: AsyncSequence, Base: Sendable, Base.Element.Element: Sendabl
       guard !Task.isCancelled else { return nil }
       self.startBase()
 
-      return try await withTaskCancellationHandler { [baseTask, state] in
-        baseTask?.cancel()
-        state.withCriticalRegion {
-          $0.childTask?.cancel()
-        }
-      } operation: {
+      return try await withTaskCancellationHandler {
         while true {
-          let childTask = await withUnsafeContinuation { [state] (continuation: UnsafeContinuation<Task<ChildValue?, Never>?, Never>) in
+          let childTask = await withCheckedContinuation { [state] (continuation: CheckedContinuation<Task<ChildValue?, Never>?, Never>) in
             let decision = state.withCriticalRegion { state -> NextDecision in
               switch state.base {
                 case .newChildIteratorAvailable(let childIterator):
@@ -302,6 +297,11 @@ where Base.Element: AsyncSequence, Base: Sendable, Base.Element.Element: Sendabl
             case .returnElement(let element):
               return try element._rethrowGet()
           }
+        }
+      } onCancel: { [baseTask, state] in
+        baseTask?.cancel()
+        state.withCriticalRegion {
+          $0.childTask?.cancel()
         }
       }
     }
