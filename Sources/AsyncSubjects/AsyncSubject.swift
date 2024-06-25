@@ -6,12 +6,17 @@
 //
 
 #if swift(>=5.7)
-public protocol AsyncSubject<Element, Failure>: AnyObject, AsyncSequence, Sendable where AsyncIterator: AsyncSubjectIterator {
-  associatedtype Failure: Error
-
-  func send(_ element: Element)
-  func send(_ termination: Termination<Failure>)
+public protocol AsyncSubjectable<Element>: AnyObject, AsyncSequence, Sendable where AsyncIterator: AsyncSubjectIterator {
+    func send(_ element: Element)
 }
+
+public protocol AsyncSubjectTerminable {
+    associatedtype Failure: Error
+
+    func send(_ termination: Termination<Failure>)
+}
+
+public typealias AsyncSubject = AsyncSubjectable & AsyncSubjectTerminable
 #else
 public protocol AsyncSubject: AnyObject, AsyncSequence, Sendable where AsyncIterator: AsyncSubjectIterator {
   associatedtype Failure: Error
