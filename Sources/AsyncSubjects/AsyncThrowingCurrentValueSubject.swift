@@ -97,7 +97,7 @@ public final class AsyncThrowingCurrentValueSubject<Element, Failure: Error>: As
   ) -> (iterator: AsyncThrowingBufferedChannel<Element, Error>.Iterator, unregister: @Sendable () -> Void) {
     let asyncBufferedChannel = AsyncThrowingBufferedChannel<Element, Error>()
 
-    let (terminalState, current) = self.state.withCriticalRegion { state -> (Termination?, Element) in
+    let (terminalState, current) = self.state.withCriticalRegion { state in
       (state.terminalState, state.current)
     }
 

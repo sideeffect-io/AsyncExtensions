@@ -75,7 +75,7 @@ public final class AsyncReplaySubject<Element>: AsyncSubject where Element: Send
   func handleNewConsumer() -> (iterator: AsyncBufferedChannel<Element>.Iterator, unregister: @Sendable () -> Void) {
     let asyncBufferedChannel = AsyncBufferedChannel<Element>()
 
-    let (terminalState, elements) = self.state.withCriticalRegion { state -> (Termination?, [Element]) in
+    let (terminalState, elements) = self.state.withCriticalRegion { state in
       (state.terminalState, state.buffer)
     }
 

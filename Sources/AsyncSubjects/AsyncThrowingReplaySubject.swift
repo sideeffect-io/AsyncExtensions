@@ -80,7 +80,7 @@ public final class AsyncThrowingReplaySubject<Element, Failure: Error>: AsyncSub
   ) -> (iterator: AsyncThrowingBufferedChannel<Element, Error>.Iterator, unregister: @Sendable () -> Void) {
     let asyncBufferedChannel = AsyncThrowingBufferedChannel<Element, Error>()
 
-    let (terminalState, elements) = self.state.withCriticalRegion { state -> (Termination?, [Element]) in
+    let (terminalState, elements) = self.state.withCriticalRegion { state in
       (state.terminalState, state.buffer)
     }
 

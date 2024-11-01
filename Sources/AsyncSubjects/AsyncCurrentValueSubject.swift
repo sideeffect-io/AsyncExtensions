@@ -91,7 +91,7 @@ public final class AsyncCurrentValueSubject<Element>: AsyncSubject where Element
   func handleNewConsumer() -> (iterator: AsyncBufferedChannel<Element>.Iterator, unregister: @Sendable () -> Void) {
     let asyncBufferedChannel = AsyncBufferedChannel<Element>()
 
-    let (terminalState, current) = self.state.withCriticalRegion { state -> (Termination?, Element) in
+    let (terminalState, current) = self.state.withCriticalRegion { state in
       (state.terminalState, state.current)
     }
 
