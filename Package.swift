@@ -19,6 +19,7 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/apple/swift-collections.git", .upToNextMajor(from: "1.0.3")),
         .package(url: "https://github.com/OpenCombine/OpenCombine.git", from: "0.14.0"),
+        .package(url: "https://github.com/apple/swift-async-algorithms.git", .upToNextMajor(from: "1.0.0")),
     ],
     targets: [
         .target(
@@ -38,6 +39,7 @@ let package = Package(
             dependencies: [
                 "AsyncExtensions",
                 .product(name: "OpenCombine", package: "OpenCombine", condition: .when(platforms: [.linux])),
+                .product(name: "AsyncAlgorithms", package: "swift-async-algorithms")
             ],
             path: "Tests"),
     ]

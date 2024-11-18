@@ -5,6 +5,7 @@
 //  Created by Thibault Wittemberg on 02/02/2022.
 //
 
+import AsyncAlgorithms
 import AsyncExtensions
 import XCTest
 
@@ -21,7 +22,7 @@ private class Root {
 final class AsyncSequence_AssignTests: XCTestCase {
   func testAssign_sets_elements_on_the_root() async throws {
     let root = Root()
-    let sut = AsyncLazySequence(["1", "2", "3"])
+    let sut = ["1", "2", "3"].async
     try await sut.assign(to: \.property, on: root)
     XCTAssertEqual(root.successiveValues, ["1", "2", "3"])
   }
