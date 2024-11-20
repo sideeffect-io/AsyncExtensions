@@ -46,29 +46,33 @@ public final class AsyncReplaySubject<Element>: AsyncSubject where Element: Send
   /// Sends a value to all consumers
   /// - Parameter element: the value to send
   public func send(_ element: Element) {
-    self.state.withCriticalRegion { state in
+    let channels = self.state.withCriticalRegion { state -> [AsyncBufferedChannel<Element>] in
       if state.buffer.count >= state.bufferSize && !state.buffer.isEmpty {
         state.buffer.removeFirst()
       }
       state.buffer.append(element)
-      for channel in state.channels.values {
-        channel.send(element)
-      }
+      return Array(state.channels.values)
+    }
+
+    for channel in channels {
+      channel.send(element)
     }
   }
 
   /// Finishes the subject with a normal ending.
   /// - Parameter termination: The termination to finish the subject.
   public func send(_ termination: Termination<Failure>) {
-    self.state.withCriticalRegion { state in
+    let channels = self.state.withCriticalRegion { state -> [AsyncBufferedChannel<Element>] in
       state.terminalState = termination
       let channels = Array(state.channels.values)
       state.channels.removeAll()
       state.buffer.removeAll()
       state.bufferSize = 0
-      for channel in channels {
-        channel.finish()
-      }
+      return channels
+    }
+
+    for channel in channels {
+      channel.finish()
     }
   }
 
@@ -120,10 +124,10 @@ public final class AsyncReplaySubject<Element>: AsyncSubject where Element: Send
     }
 
     public mutating func next() async -> Element? {
-      await withTaskCancellationHandler {
-        await self.iterator.next()
-      } onCancel: { [unregister] in
+      await withTaskCancellationHandler { [unregister] in
         unregister()
+      } operation: {
+        await self.iterator.next()
       }
     }
   }

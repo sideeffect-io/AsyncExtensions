@@ -8,6 +8,27 @@
 import AsyncExtensions
 import XCTest
 
+private struct SpyAsyncSequenceForOnNextCall<Element>: AsyncSequence {
+  typealias Element = Element
+  typealias AsyncIterator = Iterator
+  
+  let onNext: () -> Void
+  
+  func makeAsyncIterator() -> AsyncIterator {
+    Iterator(onNext: self.onNext)
+  }
+  
+  struct Iterator: AsyncIteratorProtocol {
+    let onNext: () -> Void
+    
+    func next() async throws -> Element? {
+      self.onNext()
+      try await Task.sleep(nanoseconds: 100_000_000_000)
+      return nil
+    }
+  }
+}
+
 private class SpyAsyncSequenceForNumberOfIterators<Element>: AsyncSequence {
   typealias Element = Element
   typealias AsyncIterator = Iterator
@@ -155,5 +176,47 @@ final class AsyncMulticastSequenceTests: XCTestCase {
       XCTAssertEqual(receivedElement, [1])
       XCTAssertEqual(error as? MockError, expectedError)
     }
+  }
+  
+  func test_multicast_finishes_when_task_is_cancelled() {
+    let taskHasFinishedExpectation = expectation(description: "Task has finished")
+    
+    let stream = AsyncThrowingPassthroughSubject<Int, Error>()
+    let sut = [1, 2, 3, 4, 5]
+      .async
+      .multicast(stream)
+      .autoconnect()
+    
+    Task {
+      for try await _ in sut {}
+      taskHasFinishedExpectation.fulfill()
+    }.cancel()
+    
+    wait(for: [taskHasFinishedExpectation], timeout: 1)
+  }
+  
+  func test_multicast_finishes_when_task_is_cancelled_while_waiting_for_next() {
+    let canCancelExpectation = expectation(description: "the task can be cancelled")
+    let taskHasFinishedExpectation = expectation(description: "Task has finished")
+    
+    let spyAsyncSequence = SpyAsyncSequenceForOnNextCall<Int> {
+      canCancelExpectation.fulfill()
+    }
+    
+    let stream = AsyncThrowingPassthroughSubject<Int, Error>()
+    let sut = spyAsyncSequence
+      .multicast(stream)
+      .autoconnect()
+    
+    let task = Task {
+      for try await _ in sut {}
+      taskHasFinishedExpectation.fulfill()
+    }
+    
+    wait(for: [canCancelExpectation], timeout: 1)
+    
+    task.cancel()
+    
+    wait(for: [taskHasFinishedExpectation], timeout: 1)
   }
 }
