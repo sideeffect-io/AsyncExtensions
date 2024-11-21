@@ -132,10 +132,10 @@ public final class AsyncThrowingPassthroughSubject<Element, Failure: Error>: Asy
     }
 
     public mutating func next() async throws -> Element? {
-      try await withTaskCancellationHandler { [unregister] in
-        unregister()
-      } operation: {
+      try await withTaskCancellationHandler {
         try await self.iterator.next()
+      } onCancel: { [unregister] in
+        unregister()
       }
     }
   }

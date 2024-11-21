@@ -124,10 +124,10 @@ public final class AsyncReplaySubject<Element>: AsyncSubject where Element: Send
     }
 
     public mutating func next() async -> Element? {
-      await withTaskCancellationHandler { [unregister] in
-        unregister()
-      } operation: {
+      await withTaskCancellationHandler {
         await self.iterator.next()
+      } onCancel: { [unregister] in
+        unregister()
       }
     }
   }

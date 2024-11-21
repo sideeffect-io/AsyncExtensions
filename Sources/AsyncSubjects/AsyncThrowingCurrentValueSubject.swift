@@ -148,10 +148,10 @@ public final class AsyncThrowingCurrentValueSubject<Element, Failure: Error>: As
     }
 
     public mutating func next() async throws -> Element? {
-      try await withTaskCancellationHandler { [unregister] in
-        unregister()
-      } operation: {
+      try await withTaskCancellationHandler {
         try await self.iterator.next()
+      } onCancel: { [unregister] in
+        unregister()
       }
     }
   }

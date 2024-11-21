@@ -137,10 +137,10 @@ public final class AsyncCurrentValueSubject<Element>: AsyncSubject where Element
     }
 
     public mutating func next() async -> Element? {
-      await withTaskCancellationHandler { [unregister] in
-        unregister()
-      } operation: {
+      await withTaskCancellationHandler {
         await self.iterator.next()
+      } onCancel: { [unregister] in
+        unregister()
       }
     }
   }

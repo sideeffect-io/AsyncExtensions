@@ -157,27 +157,7 @@ public final class AsyncBufferedChannel<Element>: AsyncSequence, Sendable {
     let awaitingId = self.generateId()
     let cancellation = ManagedCriticalState<Bool>(false)
 
-    return await withTaskCancellationHandler { [state] in
-      let awaiting = state.withCriticalRegion { state -> Awaiting? in
-        cancellation.withCriticalRegion { cancellation in
-          cancellation = true
-        }
-        switch state {
-          case .awaiting(var awaitings):
-            let awaiting = awaitings.remove(.placeHolder(id: awaitingId))
-            if awaitings.isEmpty {
-              state = .idle
-            } else {
-              state = .awaiting(awaitings)
-            }
-            return awaiting
-          default:
-            return nil
-        }
-      }
-
-      awaiting?.continuation?.resume(returning: nil)
-    } operation: {
+    return await withTaskCancellationHandler {
       await withCheckedContinuation { [state] (continuation: CheckedContinuation<Element?, Never>) in
         let decision = state.withCriticalRegion { state -> AwaitingDecision in
           let isCancelled = cancellation.withCriticalRegion { $0 }
@@ -218,6 +198,26 @@ public final class AsyncBufferedChannel<Element>: AsyncSequence, Sendable {
             onSuspend?()
         }
       }
+    } onCancel: { [state] in
+      let awaiting = state.withCriticalRegion { state -> Awaiting? in
+        cancellation.withCriticalRegion { cancellation in
+          cancellation = true
+        }
+        switch state {
+          case .awaiting(var awaitings):
+            let awaiting = awaitings.remove(.placeHolder(id: awaitingId))
+            if awaitings.isEmpty {
+              state = .idle
+            } else {
+              state = .awaiting(awaitings)
+            }
+            return awaiting
+          default:
+            return nil
+        }
+      }
+
+      awaiting?.continuation?.resume(returning: nil)
     }
   }
 
