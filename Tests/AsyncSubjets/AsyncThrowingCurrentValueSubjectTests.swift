@@ -31,7 +31,7 @@ final class AsyncThrowingCurrentValueSubjectTests: XCTestCase {
     XCTAssertEqual(received2, 1)
   }
 
-  func test_send_pushes_values_in_the_subject() {
+  func test_send_pushes_values_in_the_subject() async {
     let hasReceivedOneElementExpectation = expectation(description: "One element has been iterated in the async sequence")
     hasReceivedOneElementExpectation.expectedFulfillmentCount = 2
 
@@ -72,12 +72,12 @@ final class AsyncThrowingCurrentValueSubjectTests: XCTestCase {
       }
     }
 
-    wait(for: [hasReceivedOneElementExpectation], timeout: 1)
+    await fulfillment(of: [hasReceivedOneElementExpectation], timeout: 1)
 
     sut.send(2)
     sut.value = 3
 
-    wait(for: [hasReceivedSentElementsExpectation], timeout: 1)
+    await fulfillment(of: [hasReceivedSentElementsExpectation], timeout: 1)
   }
 
   func test_sendFinished_ends_the_subject_and_immediately_resumes_futur_consumer() async throws {
@@ -107,11 +107,11 @@ final class AsyncThrowingCurrentValueSubjectTests: XCTestCase {
       hasFinishedExpectation.fulfill()
     }
 
-    wait(for: [hasReceivedOneElementExpectation], timeout: 1)
+    await fulfillment(of: [hasReceivedOneElementExpectation], timeout: 1)
 
     sut.send(.finished)
 
-    wait(for: [hasFinishedExpectation], timeout: 1)
+    await fulfillment(of: [hasFinishedExpectation], timeout: 1)
 
     var iterator = sut.makeAsyncIterator()
     let received = try await iterator.next()
@@ -155,11 +155,11 @@ final class AsyncThrowingCurrentValueSubjectTests: XCTestCase {
       }
     }
 
-    wait(for: [hasReceivedOneElementExpectation], timeout: 1)
+    await fulfillment(of: [hasReceivedOneElementExpectation], timeout: 1)
 
     sut.send(.failure(expectedError))
 
-    wait(for: [hasFinishedWithFailureExpectation], timeout: 1)
+    await fulfillment(of: [hasFinishedWithFailureExpectation], timeout: 1)
 
     var iterator = sut.makeAsyncIterator()
     do {
@@ -170,7 +170,7 @@ final class AsyncThrowingCurrentValueSubjectTests: XCTestCase {
     }
   }
 
-  func test_subject_finishes_when_task_is_cancelled() {
+  func test_subject_finishes_when_task_is_cancelled() async {
     let canCancelExpectation = expectation(description: "The first element has been emitted")
     let hasCancelExceptation = expectation(description: "The task has been cancelled")
     let taskHasFinishedExpectation = expectation(description: "The task has finished")
@@ -182,19 +182,19 @@ final class AsyncThrowingCurrentValueSubjectTests: XCTestCase {
       for try await element in sut {
         firstElement = element
         canCancelExpectation.fulfill()
-        wait(for: [hasCancelExceptation], timeout: 5)
+        await fulfillment(of: [hasCancelExceptation], timeout: 5)
       }
       XCTAssertEqual(firstElement, 1)
       taskHasFinishedExpectation.fulfill()
     }
 
-    wait(for: [canCancelExpectation], timeout: 5) // one element has been emitted, we can cancel the task
+    await fulfillment(of: [canCancelExpectation], timeout: 5) // one element has been emitted, we can cancel the task
 
     task.cancel()
 
     hasCancelExceptation.fulfill() // we can release the lock in the for loop
 
-    wait(for: [taskHasFinishedExpectation], timeout: 5) // task has been cancelled and has finished
+    await fulfillment(of: [taskHasFinishedExpectation], timeout: 5) // task has been cancelled and has finished
   }
 
   func test_subject_handles_concurrency() async throws {
@@ -227,7 +227,7 @@ final class AsyncThrowingCurrentValueSubjectTests: XCTestCase {
       return received.sorted()
     }
 
-    await waitForExpectations(timeout: 1)
+    await fulfillment(of: [canSendExpectation], timeout: 1)
 
     // concurrently push values in the sut 1
     let task1 = Task {

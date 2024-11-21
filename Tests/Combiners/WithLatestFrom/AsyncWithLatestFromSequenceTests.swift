@@ -46,9 +46,9 @@ final class AsyncWithLatestFromSequenceTests: XCTestCase {
 
     Task {
       base.send(0)
-      wait(for: [baseHasProduced0], timeout: 1.0)
+      await fulfillment(of: [baseHasProduced0], timeout: 1.0)
       other.send("a")
-      wait(for: [otherHasProducedA], timeout: 1.0)
+      await fulfillment(of: [otherHasProducedA], timeout: 1.0)
       base.send(1)
     }
 
@@ -63,7 +63,7 @@ final class AsyncWithLatestFromSequenceTests: XCTestCase {
     Task {
       other.send("b")
       other.send("c")
-      wait(for: [otherHasProducedC], timeout: 1.0)
+      await fulfillment(of: [otherHasProducedC], timeout: 1.0)
       base.send(3)
     }
 
@@ -151,11 +151,11 @@ final class AsyncWithLatestFromSequenceTests: XCTestCase {
     }
 
     // ensure the other task actually starts
-    wait(for: [iterated], timeout: 1.0)
+    await fulfillment(of: [iterated], timeout: 1.0)
 
     // cancellation should ensure the loop finishes
     // without regards to the remaining underlying sequence
     task.cancel()
-    wait(for: [finished], timeout: 1.0)
+    await fulfillment(of: [finished], timeout: 1.0)
   }
 }

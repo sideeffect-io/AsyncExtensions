@@ -24,7 +24,7 @@ final class StreamedTests: XCTestCase {
         XCTAssertEqual(sut, newValue)
     }
 
-    func test_streamed_projects_in_asyncSequence() {
+    func test_streamed_projects_in_asyncSequence() async {
         let firstElementIsReceivedExpectation = expectation(description: "The first element has been received")
         let fifthElementIsReceivedExpectation = expectation(description: "The fifth element has been received")
 
@@ -44,14 +44,14 @@ final class StreamedTests: XCTestCase {
             }
         }
 
-        wait(for: [firstElementIsReceivedExpectation], timeout: 1)
+        await fulfillment(of: [firstElementIsReceivedExpectation], timeout: 1)
 
         sut = 1
         sut = 2
         sut = 3
         sut = 4
 
-        wait(for: [fifthElementIsReceivedExpectation], timeout: 1)
+        await fulfillment(of: [fifthElementIsReceivedExpectation], timeout: 1)
         task.cancel()
     }
 }

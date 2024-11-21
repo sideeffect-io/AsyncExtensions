@@ -152,7 +152,7 @@ final class AsyncSwitchToLatestSequenceTests: XCTestCase {
     }
   }
 
-  func testSwitchToLatest_finishes_when_task_is_cancelled_after_switched() {
+  func testSwitchToLatest_finishes_when_task_is_cancelled_after_switched() async {
     let canCancelExpectation = expectation(description: "The first element has been emitted")
     let hasCancelExceptation = expectation(description: "The task has been cancelled")
     let taskHasFinishedExpectation = expectation(description: "The task has finished")
@@ -170,18 +170,18 @@ final class AsyncSwitchToLatestSequenceTests: XCTestCase {
       for try await element in sut {
         firstElement = element
         canCancelExpectation.fulfill()
-        wait(for: [hasCancelExceptation], timeout: 5)
+        await fulfillment(of: [hasCancelExceptation], timeout: 5)
       }
       XCTAssertEqual(firstElement, 3)
       taskHasFinishedExpectation.fulfill()
     }
 
-    wait(for: [canCancelExpectation], timeout: 5) // one element has been emitted, we can cancel the task
+    await fulfillment(of: [canCancelExpectation], timeout: 5) // one element has been emitted, we can cancel the task
 
     task.cancel()
 
     hasCancelExceptation.fulfill() // we can release the lock in the for loop
 
-    wait(for: [taskHasFinishedExpectation], timeout: 5) // task has been cancelled and has finished
+    await fulfillment(of: [taskHasFinishedExpectation], timeout: 5) // task has been cancelled and has finished
   }
 }

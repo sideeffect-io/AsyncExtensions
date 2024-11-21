@@ -32,7 +32,7 @@ final class AsyncFailSequenceTests: XCTestCase {
     XCTAssertTrue(receivedResult.isEmpty)
   }
 
-  func test_AsyncFailSequence_returns_an_asyncSequence_that_finishes_without_error_when_task_is_cancelled() {
+  func test_AsyncFailSequence_returns_an_asyncSequence_that_finishes_without_error_when_task_is_cancelled() async {
     let taskHasBeenCancelledExpectation = expectation(description: "The task has been cancelled")
     let sequenceHasFinishedExpectation = expectation(description: "The async sequence has finished")
 
@@ -41,7 +41,7 @@ final class AsyncFailSequenceTests: XCTestCase {
     let task = Task {
       do {
         var iterator = failSequence.makeAsyncIterator()
-        wait(for: [taskHasBeenCancelledExpectation], timeout: 1)
+        await fulfillment(of: [taskHasBeenCancelledExpectation], timeout: 1)
         while let _ = try await iterator.next() {
           XCTFail("The AsyncSequence should not output elements")
         }
@@ -56,6 +56,6 @@ final class AsyncFailSequenceTests: XCTestCase {
 
     taskHasBeenCancelledExpectation.fulfill()
 
-    wait(for: [sequenceHasFinishedExpectation], timeout: 1)
+    await fulfillment(of: [sequenceHasFinishedExpectation], timeout: 1)
   }
 }
