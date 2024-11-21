@@ -1,34 +1,42 @@
 {
-  "object": {
-    "pins": [
-      {
-        "package": "OpenCombine",
-        "repositoryURL": "https://github.com/OpenCombine/OpenCombine.git",
-        "state": {
-          "branch": null,
-          "revision": "8576f0d579b27020beccbccc3ea6844f3ddfc2c2",
-          "version": "0.14.0"
-        }
-      },
-      {
-        "package": "swift-async-algorithms",
-        "repositoryURL": "https://github.com/apple/swift-async-algorithms.git",
-        "state": {
-          "branch": null,
-          "revision": "5c8bd186f48c16af0775972700626f0b74588278",
-          "version": "1.0.2"
-        }
-      },
-      {
-        "package": "swift-collections",
-        "repositoryURL": "https://github.com/apple/swift-collections.git",
-        "state": {
-          "branch": null,
-          "revision": "671108c96644956dddcd89dd59c203dcdb36cec7",
-          "version": "1.1.4"
-        }
+  "originHash" : "087b502a28884d33bd19feaf2f3bb1b8757136daaee70899f7c6bf8a8a646bb5",
+  "pins" : [
+    {
+      "identity" : "opencombine",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/OpenCombine/OpenCombine.git",
+      "state" : {
+        "revision" : "8576f0d579b27020beccbccc3ea6844f3ddfc2c2",
+        "version" : "0.14.0"
       }
-    ]
-  },
-  "version": 1
+    },
+    {
+      "identity" : "swift-async-algorithms",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-async-algorithms.git",
+      "state" : {
+        "revision" : "5c8bd186f48c16af0775972700626f0b74588278",
+        "version" : "1.0.2"
+      }
+    },
+    {
+      "identity" : "swift-atomics",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-atomics",
+      "state" : {
+        "revision" : "cd142fd2f64be2100422d658e7411e39489da985",
+        "version" : "1.2.0"
+      }
+    },
+    {
+      "identity" : "swift-collections",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-collections.git",
+      "state" : {
+        "revision" : "671108c96644956dddcd89dd59c203dcdb36cec7",
+        "version" : "1.1.4"
+      }
+    }
+  ],
+  "version" : 3
 }
