@@ -36,7 +36,7 @@ public final class AsyncBufferedChannel<Element>: AsyncSequence, Sendable {
 
   struct Awaiting: Hashable {
     let id: Int
-    let continuation: CheckedContinuation<Element?, Never>?
+    let continuation: UnsafeContinuation<Element?, Never>?
 
     static func placeHolder(id: Int) -> Awaiting {
       Awaiting(id: id, continuation: nil)
@@ -156,7 +156,7 @@ public final class AsyncBufferedChannel<Element>: AsyncSequence, Sendable {
     let cancellation = ManagedAtomic<Bool>(false)
 
     return await withTaskCancellationHandler {
-      await withCheckedContinuation { [state] (continuation: CheckedContinuation<Element?, Never>) in
+      await withUnsafeContinuation { [state] (continuation: UnsafeContinuation<Element?, Never>) in
         let decision = state.withCriticalRegion { state -> AwaitingDecision in
           let isCancelled = cancellation.load(ordering: .acquiring)
           guard !isCancelled else { return .resume(nil) }
