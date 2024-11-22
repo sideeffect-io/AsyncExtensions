@@ -81,7 +81,7 @@ public final class AsyncThrowingBufferedChannel<Element, Failure: Error>: AsyncS
   enum State: @unchecked Sendable {
     case idle
     case queued(Deque<Value>)
-    case awaiting(OrderedSet<Awaiting>)
+    case awaiting([Awaiting])
     case terminated(Termination)
 
     static var initial: State {
@@ -206,7 +206,13 @@ public final class AsyncThrowingBufferedChannel<Element, Failure: Error>: AsyncS
                   return .suspend
               }
             case .awaiting(var awaitings):
-              awaitings.updateOrAppend(Awaiting(id: awaitingId, continuation: continuation))
+              let awaiting = Awaiting(id: awaitingId, continuation: continuation)
+
+              if let index = awaitings.firstIndex(where: { $0 == awaiting }) {
+                awaitings[index] = awaiting
+              } else {
+                awaitings.append(awaiting)
+              }
               state = .awaiting(awaitings)
               return .suspend
             case .terminated(.finished):
@@ -228,7 +234,10 @@ public final class AsyncThrowingBufferedChannel<Element, Failure: Error>: AsyncS
         cancellation.store(true, ordering: .releasing)
         switch state {
           case .awaiting(var awaitings):
-            let awaiting = awaitings.remove(.placeHolder(id: awaitingId))
+            let index = awaitings.firstIndex(where: { $0 == .placeHolder(id: awaitingId) })
+            guard let index else { return nil }
+            let awaiting = awaitings[index]
+            awaitings.remove(at: index)
             if awaitings.isEmpty {
               state = .idle
             } else {
