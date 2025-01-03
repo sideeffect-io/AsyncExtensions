@@ -47,7 +47,7 @@ private struct LongAsyncSequence<Element>: AsyncSequence, AsyncIteratorProtocol 
         throw MockError(code: 0)
       }
       return self.elements.next()
-    } onCancel: {[onCancel] in
+    } onCancel: { [onCancel] in
       onCancel()
     }
   }
@@ -58,7 +58,7 @@ private struct LongAsyncSequence<Element>: AsyncSequence, AsyncIteratorProtocol 
 }
 
 final class AsyncSequence_ShareTests: XCTestCase {
-  func test_share_multicasts_values_to_clientLoops() {
+  func test_share_multicasts_values_to_clientLoops() async {
     let tasksHaveFinishedExpectation = expectation(description: "the tasks have finished")
     tasksHaveFinishedExpectation.expectedFulfillmentCount = 2
     
@@ -81,6 +81,6 @@ final class AsyncSequence_ShareTests: XCTestCase {
       tasksHaveFinishedExpectation.fulfill()
     }
     
-    waitForExpectations(timeout: 5)
+    await fulfillment(of: [tasksHaveFinishedExpectation], timeout: 5)
   }
 }

@@ -28,7 +28,7 @@ final class AsyncHandleEventsSequenceTests: XCTestCase {
     XCTAssertEqual(received.criticalState, ["start", "1", "2", "3", "4", "5", "finish finished"])
   }
 
-  func test_iteration_calls_onCancel_when_task_is_cancelled() {
+  func test_iteration_calls_onCancel_when_task_is_cancelled() async {
     let firstElementHasBeenReceivedExpectation = expectation(description: "First element has been emitted")
     let taskHasBeenCancelledExpectation = expectation(description: "The task has been cancelled")
     let onCancelHasBeenCalledExpectation = expectation(description: "OnCancel has been called")
@@ -53,17 +53,17 @@ final class AsyncHandleEventsSequenceTests: XCTestCase {
           firstElementHasBeenReceivedExpectation.fulfill()
         }
 
-        wait(for: [taskHasBeenCancelledExpectation], timeout: 1)
+        await fulfillment(of: [taskHasBeenCancelledExpectation], timeout: 1)
       }
     }
 
-    wait(for: [firstElementHasBeenReceivedExpectation], timeout: 1)
+    await fulfillment(of: [firstElementHasBeenReceivedExpectation], timeout: 1)
 
     task.cancel()
 
     taskHasBeenCancelledExpectation.fulfill()
 
-    wait(for: [onCancelHasBeenCalledExpectation], timeout: 1)
+    await fulfillment(of: [onCancelHasBeenCalledExpectation], timeout: 1)
 
     XCTAssertEqual(received.criticalState, ["start", "1", "cancelled"])
   }
@@ -95,10 +95,10 @@ final class AsyncHandleEventsSequenceTests: XCTestCase {
       XCTAssertEqual(error as? MockError, expectedError)
     }
 
-    await waitForExpectations(timeout: 1)
+    await fulfillment(of: [onFinishHasBeenCalledExpectation], timeout: 1)
   }
 
-  func test_iteration_finishes_when_task_is_cancelled() {
+  func test_iteration_finishes_when_task_is_cancelled() async {
     let canCancelExpectation = expectation(description: "The first element has been emitted")
     let hasCancelExceptation = expectation(description: "The task has been cancelled")
     let taskHasFinishedExpectation = expectation(description: "The task has finished")
@@ -112,18 +112,18 @@ final class AsyncHandleEventsSequenceTests: XCTestCase {
       for try await element in handledSequence {
         firstElement = element
         canCancelExpectation.fulfill()
-        wait(for: [hasCancelExceptation], timeout: 5)
+        await fulfillment(of: [hasCancelExceptation], timeout: 5)
       }
       XCTAssertEqual(firstElement, 0)
       taskHasFinishedExpectation.fulfill()
     }
 
-    wait(for: [canCancelExpectation], timeout: 5) // one element has been emitted, we can cancel the task
+    await fulfillment(of: [canCancelExpectation], timeout: 5) // one element has been emitted, we can cancel the task
 
     task.cancel()
 
     hasCancelExceptation.fulfill() // we can release the lock in the for loop
 
-    wait(for: [taskHasFinishedExpectation], timeout: 5) // task has been cancelled and has finished
+    await fulfillment(of: [taskHasFinishedExpectation], timeout: 5) // task has been cancelled and has finished
   }
 }

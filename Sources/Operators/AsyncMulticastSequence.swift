@@ -105,37 +105,31 @@ where Base.Element == Subject.Element, Subject.Failure == Error, Base.AsyncItera
   }
 
   func next() async {
-    await Task {
-      let (canAccessBase, iterator) = self.state.withCriticalRegion { state -> (Bool, Base.AsyncIterator?) in
-        switch state {
-          case .available(let iterator):
-            state = .busy
-            return (true, iterator)
-          case .busy:
-            return (false, nil)
-        }
+    let (canAccessBase, iterator) = self.state.withCriticalRegion { state -> (Bool, Base.AsyncIterator?) in
+      switch state {
+        case .available(let iterator):
+          state = .busy
+          return (true, iterator)
+        case .busy:
+          return (false, nil)
       }
+    }
 
-      guard canAccessBase, var iterator = iterator else { return }
+    guard canAccessBase, var iterator = iterator else { return }
 
-      let toSend: Result<Element?, Error>
-      do {
-        let element = try await iterator.next()
-        toSend = .success(element)
-      } catch {
-        toSend = .failure(error)
+    do {
+      if let element = try await iterator.next() {
+        self.subject.send(element)
+      } else {
+        self.subject.send(.finished)
       }
+    } catch {
+      self.subject.send(.failure(error))
+    }
 
-      self.state.withCriticalRegion { state in
-        state = .available(iterator)
-      }
-
-      switch toSend {
-        case .success(.some(let element)): self.subject.send(element)
-        case .success(.none): self.subject.send(.finished)
-        case .failure(let error): self.subject.send(.failure(error))
-      }
-    }.value
+    self.state.withCriticalRegion { state in
+      state = .available(iterator)
+    }
   }
 
   public func makeAsyncIterator() -> AsyncIterator {
@@ -155,8 +149,6 @@ where Base.Element == Subject.Element, Subject.Failure == Error, Base.AsyncItera
     let isConnected: ManagedCriticalState<Bool>
 
     public mutating func next() async rethrows -> Element? {
-      guard !Task.isCancelled else { return nil }
-      
       let shouldWaitForGate = self.isConnected.withCriticalRegion { isConnected -> Bool in
         if !isConnected {
           isConnected = true
@@ -169,11 +161,10 @@ where Base.Element == Subject.Element, Subject.Failure == Error, Base.AsyncItera
       }
 
       if !self.subjectIterator.hasBufferedElements {
-        await self.asyncMulticastSequence.next()
+       await self.asyncMulticastSequence.next()
       }
 
-      let element = try await self.subjectIterator.next()
-      return element
+      return try await self.subjectIterator.next()
     }
   }
 }

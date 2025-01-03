@@ -9,7 +9,7 @@ import AsyncExtensions
 import XCTest
 
 final class AsyncTimerSequenceTests: XCTestCase {
-  func testTimer_finishes_when_task_is_cancelled() {
+  func testTimer_finishes_when_task_is_cancelled() async {
     let canCancelExpectation = expectation(description: "the timer can be cancelled")
     let asyncSequenceHasFinishedExpectation = expectation(description: "The async sequence has finished")
 
@@ -26,10 +26,10 @@ final class AsyncTimerSequenceTests: XCTestCase {
       asyncSequenceHasFinishedExpectation.fulfill()
     }
 
-    wait(for: [canCancelExpectation], timeout: 5)
+    await fulfillment(of: [canCancelExpectation], timeout: 5)
 
     task.cancel()
 
-    wait(for: [asyncSequenceHasFinishedExpectation], timeout: 5)
+    await fulfillment(of: [asyncSequenceHasFinishedExpectation], timeout: 5)
   }
 }

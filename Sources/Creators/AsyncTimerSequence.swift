@@ -5,7 +5,12 @@
 //  Created by Thibault Wittemberg on 04/03/2022.
 //
 
+#if canImport(FoundationEssentials)
+import FoundationEssentials
+import Dispatch
+#else
 @preconcurrency import Foundation
+#endif
 
 private extension DispatchTimeInterval {
   var nanoseconds: UInt64 {
@@ -78,11 +83,11 @@ public struct AsyncTimerSequence: AsyncSequence {
     }
 
     public mutating func next() async -> Element? {
-      await withTaskCancellationHandler { [task] in
-        task.cancel()
-      } operation: {
+      await withTaskCancellationHandler {
         guard !Task.isCancelled else { return nil }
         return await self.iterator.next()
+      } onCancel: { [task] in
+        task.cancel()
       }
     }
   }

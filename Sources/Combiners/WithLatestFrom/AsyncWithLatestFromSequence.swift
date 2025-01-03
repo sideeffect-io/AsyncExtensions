@@ -121,9 +121,7 @@ where Other: Sendable, Other.Element: Sendable {
     public mutating func next() async rethrows -> Element? {
       guard !self.isTerminated else { return nil }
 
-      return try await withTaskCancellationHandler { [otherTask] in
-        otherTask?.cancel()
-      } operation: { [otherTask, otherState, onBaseElement] in
+      return try await withTaskCancellationHandler { [otherTask, otherState, onBaseElement] in
         do {
           while true {
             guard let baseElement = try await self.base.next() else {
@@ -157,8 +155,10 @@ where Other: Sendable, Other.Element: Sendable {
           otherTask?.cancel()
           throw error
         }
+      } onCancel: { [otherTask] in
+        otherTask?.cancel()
       }
-    }
+   }
   }
 }
 

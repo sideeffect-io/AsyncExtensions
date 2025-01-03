@@ -9,7 +9,7 @@ import AsyncExtensions
 import XCTest
 
 final class AsyncStream_PipeTests: XCTestCase {
-  func test_pipe_produces_stream_input_and_output() {
+  func test_pipe_produces_stream_input_and_output() async {
     let finished = expectation(description: "The stream has finished")
 
     // Given
@@ -30,10 +30,10 @@ final class AsyncStream_PipeTests: XCTestCase {
     input.yield(2)
     input.finish()
 
-    wait(for: [finished], timeout: 1.0)
+    await fulfillment(of: [finished], timeout: 1.0)
   }
 
-  func test_pipe_produces_stream_input_and_output_that_can_throw() {
+  func test_pipe_produces_stream_input_and_output_that_can_throw() async {
     let finished = expectation(description: "The stream has finished")
 
     // Given
@@ -58,6 +58,6 @@ final class AsyncStream_PipeTests: XCTestCase {
     input.yield(2)
     input.yield(with: .failure(MockError(code: 1701)))
 
-    wait(for: [finished], timeout: 1.0)
+    await fulfillment(of: [finished], timeout: 1.0)
   }
 }

@@ -172,12 +172,7 @@ where Other1: Sendable, Other2: Sendable, Other1.Element: Sendable, Other2.Eleme
       let shouldReturnNil = self.isTerminated.withCriticalRegion { $0 }
       guard !shouldReturnNil else { return nil }
 
-      return try await withTaskCancellationHandler { [isTerminated, othersTask] in
-        isTerminated.withCriticalRegion { isTerminated in
-          isTerminated = true
-        }
-        othersTask?.cancel()
-      } operation: { [othersTask, othersState, onBaseElement] in
+      return try await withTaskCancellationHandler { [othersTask, othersState, onBaseElement] in
         do {
           while true {
             guard let baseElement = try await self.base.next() else {
@@ -219,6 +214,11 @@ where Other1: Sendable, Other2: Sendable, Other1.Element: Sendable, Other2.Eleme
           othersTask?.cancel()
           throw error
         }
+      } onCancel: { [isTerminated, othersTask] in
+        isTerminated.withCriticalRegion { isTerminated in
+          isTerminated = true
+        }
+        othersTask?.cancel()
       }
     }
   }

@@ -5,6 +5,7 @@
 //  Created by Thibault Wittemberg on 07/01/2022.
 //
 
+import Atomics
 import DequeModule
 import OrderedCollections
 
@@ -80,7 +81,7 @@ public final class AsyncThrowingBufferedChannel<Element, Failure: Error>: AsyncS
   enum State: @unchecked Sendable {
     case idle
     case queued(Deque<Value>)
-    case awaiting(OrderedSet<Awaiting>)
+    case awaiting([Awaiting])
     case terminated(Termination)
 
     static var initial: State {
@@ -88,19 +89,16 @@ public final class AsyncThrowingBufferedChannel<Element, Failure: Error>: AsyncS
     }
   }
 
-  let ids: ManagedCriticalState<Int>
+  let ids: ManagedAtomic<Int>
   let state: ManagedCriticalState<State>
 
   public init() {
-    self.ids = ManagedCriticalState(0)
+    self.ids = ManagedAtomic(0)
     self.state = ManagedCriticalState(.initial)
   }
 
   func generateId() -> Int {
-    self.ids.withCriticalRegion { ids in
-      ids += 1
-      return ids
-    }
+    ids.wrappingIncrementThenLoad(by: 1, ordering: .relaxed)
   }
 
   var hasBufferedElements: Bool {
@@ -176,32 +174,12 @@ public final class AsyncThrowingBufferedChannel<Element, Failure: Error>: AsyncS
 
   func next(onSuspend: (() -> Void)? = nil) async throws -> Element? {
     let awaitingId = self.generateId()
-    let cancellation = ManagedCriticalState<Bool>(false)
+    let cancellation = ManagedAtomic<Bool>(false)
 
-    return try await withTaskCancellationHandler { [state] in
-      let awaiting = state.withCriticalRegion { state -> Awaiting? in
-        cancellation.withCriticalRegion { cancellation in
-          cancellation = true
-        }
-        switch state {
-          case .awaiting(var awaitings):
-            let awaiting = awaitings.remove(.placeHolder(id: awaitingId))
-            if awaitings.isEmpty {
-              state = .idle
-            } else {
-              state = .awaiting(awaitings)
-            }
-            return awaiting
-          default:
-            return nil
-        }
-      }
-
-      awaiting?.continuation?.resume(returning: nil)
-    } operation: {
+    return try await withTaskCancellationHandler {
       try await withUnsafeThrowingContinuation { [state] (continuation: UnsafeContinuation<Element?, Error>) in
         let decision = state.withCriticalRegion { state -> AwaitingDecision in
-          let isCancelled = cancellation.withCriticalRegion { $0 }
+          let isCancelled = cancellation.load(ordering: .acquiring)
           guard !isCancelled else { return .resume(nil) }
 
           switch state {
@@ -228,7 +206,13 @@ public final class AsyncThrowingBufferedChannel<Element, Failure: Error>: AsyncS
                   return .suspend
               }
             case .awaiting(var awaitings):
-              awaitings.updateOrAppend(Awaiting(id: awaitingId, continuation: continuation))
+              let awaiting = Awaiting(id: awaitingId, continuation: continuation)
+
+              if let index = awaitings.firstIndex(where: { $0 == awaiting }) {
+                awaitings[index] = awaiting
+              } else {
+                awaitings.append(awaiting)
+              }
               state = .awaiting(awaitings)
               return .suspend
             case .terminated(.finished):
@@ -245,6 +229,27 @@ public final class AsyncThrowingBufferedChannel<Element, Failure: Error>: AsyncS
             onSuspend?()
         }
       }
+    } onCancel: { [state] in
+      let awaiting = state.withCriticalRegion { state -> Awaiting? in
+        cancellation.store(true, ordering: .releasing)
+        switch state {
+          case .awaiting(var awaitings):
+            let index = awaitings.firstIndex(where: { $0 == .placeHolder(id: awaitingId) })
+            guard let index else { return nil }
+            let awaiting = awaitings[index]
+            awaitings.remove(at: index)
+            if awaitings.isEmpty {
+              state = .idle
+            } else {
+              state = .awaiting(awaitings)
+            }
+            return awaiting
+          default:
+            return nil
+        }
+      }
+
+      awaiting?.continuation?.resume(returning: nil)
     }
   }
 
