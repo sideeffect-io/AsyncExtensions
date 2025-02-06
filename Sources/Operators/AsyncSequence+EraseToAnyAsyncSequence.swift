@@ -42,3 +42,5 @@ public struct AnyAsyncIterator<Element>: AsyncIteratorProtocol {
     try await self.nextClosure()
   }
 }
+
+extension AnyAsyncSequence: Sendable {}
