@@ -107,11 +107,11 @@ final class AsyncThrowingCurrentValueSubjectTests: XCTestCase {
       hasFinishedExpectation.fulfill()
     }
 
-    wait(for: [hasReceivedOneElementExpectation], timeout: 1)
+    await fulfillment(of: [hasReceivedOneElementExpectation], timeout: 1)
 
     sut.send(.finished)
 
-    wait(for: [hasFinishedExpectation], timeout: 1)
+    await fulfillment(of: [hasFinishedExpectation], timeout: 1)
 
     var iterator = sut.makeAsyncIterator()
     let received = try await iterator.next()
@@ -155,11 +155,11 @@ final class AsyncThrowingCurrentValueSubjectTests: XCTestCase {
       }
     }
 
-    wait(for: [hasReceivedOneElementExpectation], timeout: 1)
+    await fulfillment(of: [hasReceivedOneElementExpectation], timeout: 1)
 
     sut.send(.failure(expectedError))
 
-    wait(for: [hasFinishedWithFailureExpectation], timeout: 1)
+    await fulfillment(of: [hasFinishedWithFailureExpectation], timeout: 1)
 
     var iterator = sut.makeAsyncIterator()
     do {
@@ -182,7 +182,7 @@ final class AsyncThrowingCurrentValueSubjectTests: XCTestCase {
       for try await element in sut {
         firstElement = element
         canCancelExpectation.fulfill()
-        wait(for: [hasCancelExceptation], timeout: 5)
+        await fulfillment(of: [hasCancelExceptation], timeout: 5)
       }
       XCTAssertEqual(firstElement, 1)
       taskHasFinishedExpectation.fulfill()
@@ -227,7 +227,7 @@ final class AsyncThrowingCurrentValueSubjectTests: XCTestCase {
       return received.sorted()
     }
 
-    await waitForExpectations(timeout: 1)
+    await fulfillment(of: [canSendExpectation], timeout: 1)
 
     // concurrently push values in the sut 1
     let task1 = Task {

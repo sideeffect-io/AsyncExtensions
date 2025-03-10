@@ -60,11 +60,11 @@ final class AsyncWithLatestFrom2SequenceTests: XCTestCase {
 
     Task {
       base.send(0)
-      wait(for: [baseHasProduced0], timeout: 1.0)
+      await fulfillment(of: [baseHasProduced0], timeout: 1.0)
       other1.send("a")
-      wait(for: [other1HasProducedA], timeout: 1.0)
+      await fulfillment(of: [other1HasProducedA], timeout: 1.0)
       other2.send("x")
-      wait(for: [other2HasProducedX], timeout: 1.0)
+      await fulfillment(of: [other2HasProducedX], timeout: 1.0)
       base.send(1)
     }
 
@@ -73,7 +73,7 @@ final class AsyncWithLatestFrom2SequenceTests: XCTestCase {
 
     Task {
       other2.send("y")
-      wait(for: [other2HasProducedY], timeout: 1.0)
+      await fulfillment(of: [other2HasProducedY], timeout: 1.0)
       base.send(2)
     }
 
@@ -82,7 +82,7 @@ final class AsyncWithLatestFrom2SequenceTests: XCTestCase {
 
     Task {
       other1.send("b")
-      wait(for: [other1HasProducedB], timeout: 1.0)
+      await fulfillment(of: [other1HasProducedB], timeout: 1.0)
       base.send(3)
     }
 
@@ -209,11 +209,11 @@ final class AsyncWithLatestFrom2SequenceTests: XCTestCase {
     }
 
     // ensure the other task actually starts
-    wait(for: [iterated], timeout: 5.0)
+    await fulfillment(of: [iterated], timeout: 5.0)
 
     // cancellation should ensure the loop finishes
     // without regards to the remaining underlying sequence
     task.cancel()
-    wait(for: [finished], timeout: 5.0)
+    await fulfillment(of: [finished], timeout: 5.0)
   }
 }
