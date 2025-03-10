@@ -5,6 +5,7 @@
 //  Created by Thibault Wittemberg on 01/01/2022.
 //
 
+import AsyncAlgorithms
 import AsyncExtensions
 import XCTest
 
