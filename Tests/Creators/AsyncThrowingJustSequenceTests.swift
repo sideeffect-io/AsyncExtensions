@@ -47,14 +47,14 @@ final class AsyncThrowingJustSequenceTests: XCTestCase {
     }
   }
 
-  func test_AsyncThrowingJustSequence_returns_an_asyncSequence_that_finishes_without_elements_when_task_is_cancelled() {
+  func test_AsyncThrowingJustSequence_returns_an_asyncSequence_that_finishes_without_elements_when_task_is_cancelled() async {
     let hasCancelledExpectation = expectation(description: "The task has been cancelled")
     let hasFinishedExpectation = expectation(description: "The AsyncSequence has finished")
 
     let justSequence = AsyncThrowingJustSequence<Int>(1)
 
     let task = Task {
-      wait(for: [hasCancelledExpectation], timeout: 1)
+      await fulfillment(of: [hasCancelledExpectation], timeout: 1)
       for try await _ in justSequence {
         XCTFail("The AsyncSequence should not output elements")
       }
@@ -65,6 +65,6 @@ final class AsyncThrowingJustSequenceTests: XCTestCase {
 
     hasCancelledExpectation.fulfill()
 
-    wait(for: [hasFinishedExpectation], timeout: 1)
+    await fulfillment(of: [hasFinishedExpectation], timeout: 1)
   }
 }

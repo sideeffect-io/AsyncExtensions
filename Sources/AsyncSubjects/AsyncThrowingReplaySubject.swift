@@ -45,33 +45,37 @@ public final class AsyncThrowingReplaySubject<Element, Failure: Error>: AsyncSub
   /// Sends a value to all consumers
   /// - Parameter element: the value to send
   public func send(_ element: Element) {
-    self.state.withCriticalRegion { state in
+    let channels = self.state.withCriticalRegion { state -> [AsyncThrowingBufferedChannel<Element, Error>] in
       if state.buffer.count >= state.bufferSize && !state.buffer.isEmpty {
         state.buffer.removeFirst()
       }
       state.buffer.append(element)
-      for channel in state.channels.values {
-        channel.send(element)
-      }
+      return Array(state.channels.values)
+    }
+
+    for channel in channels {
+      channel.send(element)
     }
   }
 
   /// Finishes the subject with either a normal ending or an error.
   /// - Parameter termination: The termination to finish the subject
   public func send(_ termination: Termination<Failure>) {
-    self.state.withCriticalRegion { state in
+    let channels = self.state.withCriticalRegion { state -> [AsyncThrowingBufferedChannel<Element, Error>] in
       state.terminalState = termination
       let channels = Array(state.channels.values)
       state.channels.removeAll()
       state.buffer.removeAll()
       state.bufferSize = 0
-      for channel in channels {
-        switch termination {
-          case .finished:
-            channel.finish()
-          case .failure(let error):
-            channel.fail(error)
-        }
+      return channels
+    }
+
+    for channel in channels {
+      switch termination {
+        case .finished:
+          channel.finish()
+        case .failure(let error):
+          channel.fail(error)
       }
     }
   }
@@ -80,7 +84,7 @@ public final class AsyncThrowingReplaySubject<Element, Failure: Error>: AsyncSub
   ) -> (iterator: AsyncThrowingBufferedChannel<Element, Error>.Iterator, unregister: @Sendable () -> Void) {
     let asyncBufferedChannel = AsyncThrowingBufferedChannel<Element, Error>()
 
-    let (terminalState, elements) = self.state.withCriticalRegion { state -> (Termination?, [Element]) in
+    let (terminalState, elements) = self.state.withCriticalRegion { state in
       (state.terminalState, state.buffer)
     }
 
