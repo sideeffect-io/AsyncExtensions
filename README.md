@@ -38,10 +38,10 @@ AsyncStream)
 ### Subjects
 * [AsyncPassthroughSubject](./Sources/AsyncSubjects/AsyncPassthroughSubject.swift): Subject with a shared output
 * [AsyncThrowingPassthroughSubject](./Sources/AsyncSubjects/AsyncThrowingPassthroughSubject.swift): Throwing subject with a shared output
-* [AsyncCurrentValueSubject](./Sources/AsyncSubjects/AsyncCurrentValueSubject.swift): Subject with a shared output. Maintain an replays its current value
-* [AsyncThrowingCurrentValueSubject](./Sources/AsyncSubjects/AsyncThrowingCurrentValueSubject.swift): Throwing subject with a shared output. Maintain an replays its current value
-* [AsyncReplaySubject](./Sources/AsyncSubjects/AsyncReplaySubject.swift): Subject with a shared output. Maintain an replays a buffered amount of values
-* [AsyncThrowingReplaySubject](./Sources/AsyncSubjects/AsyncThrowingReplaySubject.swift): Throwing subject with a shared output. Maintain an replays a buffered amount of values
+* [AsyncCurrentValueSubject](./Sources/AsyncSubjects/AsyncCurrentValueSubject.swift): Subject with a shared output. Maintains and replays its current value
+* [AsyncThrowingCurrentValueSubject](./Sources/AsyncSubjects/AsyncThrowingCurrentValueSubject.swift): Throwing subject with a shared output. Maintains and replays its current value
+* [AsyncReplaySubject](./Sources/AsyncSubjects/AsyncReplaySubject.swift): Subject with a shared output. Maintains and replays a buffered amount of values
+* [AsyncThrowingReplaySubject](./Sources/AsyncSubjects/AsyncThrowingReplaySubject.swift): Throwing subject with a shared output. Maintains and replays a buffered amount of values
 
 ### Combiners
 * [`zip(_:_:)`](./Sources/Combiners/Zip/AsyncZip2Sequence.swift): Zips two `AsyncSequence` into an AsyncSequence of tuple of elements
