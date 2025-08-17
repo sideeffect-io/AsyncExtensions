@@ -8,6 +8,27 @@
 import AsyncExtensions
 import XCTest
 
+private struct SpyAsyncSequenceForOnNextCall<Element>: AsyncSequence {
+  typealias Element = Element
+  typealias AsyncIterator = Iterator
+  
+  let onNext: () -> Void
+  
+  func makeAsyncIterator() -> AsyncIterator {
+    Iterator(onNext: self.onNext)
+  }
+  
+  struct Iterator: AsyncIteratorProtocol {
+    let onNext: () -> Void
+    
+    func next() async throws -> Element? {
+      self.onNext()
+      try await Task.sleep(nanoseconds: 100_000_000_000)
+      return nil
+    }
+  }
+}
+
 private class SpyAsyncSequenceForNumberOfIterators<Element>: AsyncSequence {
   typealias Element = Element
   typealias AsyncIterator = Iterator
@@ -40,7 +61,7 @@ private class SpyAsyncSequenceForNumberOfIterators<Element>: AsyncSequence {
 }
 
 final class AsyncMulticastSequenceTests: XCTestCase {
-  func test_multiple_loops_receive_elements_from_single_baseIterator() {
+  func test_multiple_loops_receive_elements_from_single_baseIterator() async {
     let taskHaveIterators = expectation(description: "All tasks have their iterator")
     taskHaveIterators.expectedFulfillmentCount = 2
     
@@ -73,16 +94,16 @@ final class AsyncMulticastSequenceTests: XCTestCase {
       tasksHaveFinishedExpectation.fulfill()
     }
     
-    wait(for: [taskHaveIterators], timeout: 1)
+    await fulfillment(of: [taskHaveIterators], timeout: 1)
     
     sut.connect()
     
-    wait(for: [tasksHaveFinishedExpectation], timeout: 1)
+    await fulfillment(of: [tasksHaveFinishedExpectation], timeout: 1)
     
     XCTAssertEqual(spyUpstreamSequence.numberOfIterators, 1)
   }
   
-  func test_multiple_loops_uses_provided_stream() {
+  func test_multiple_loops_uses_provided_stream() async {
     let taskHaveIterators = expectation(description: "All tasks have their iterator")
     taskHaveIterators.expectedFulfillmentCount = 3
     
@@ -126,11 +147,11 @@ final class AsyncMulticastSequenceTests: XCTestCase {
       tasksHaveFinishedExpectation.fulfill()
     }
     
-    wait(for: [taskHaveIterators], timeout: 1)
+    await fulfillment(of: [taskHaveIterators], timeout: 1)
     
     sut.connect()
     
-    wait(for: [tasksHaveFinishedExpectation], timeout: 1)
+    await fulfillment(of: [tasksHaveFinishedExpectation], timeout: 1)
     
     XCTAssertEqual(spyUpstreamSequence.numberOfIterators, 1)
   }
@@ -155,5 +176,47 @@ final class AsyncMulticastSequenceTests: XCTestCase {
       XCTAssertEqual(receivedElement, [1])
       XCTAssertEqual(error as? MockError, expectedError)
     }
+  }
+  
+  func test_multicast_finishes_when_task_is_cancelled() async {
+    let taskHasFinishedExpectation = expectation(description: "Task has finished")
+    
+    let stream = AsyncThrowingPassthroughSubject<Int, Error>()
+    let sut = [1, 2, 3, 4, 5]
+      .async
+      .multicast(stream)
+      .autoconnect()
+    
+    Task {
+      for try await _ in sut {}
+      taskHasFinishedExpectation.fulfill()
+    }.cancel()
+    
+    await fulfillment(of: [taskHasFinishedExpectation], timeout: 1)
+  }
+  
+  func test_multicast_finishes_when_task_is_cancelled_while_waiting_for_next() async {
+    let canCancelExpectation = expectation(description: "the task can be cancelled")
+    let taskHasFinishedExpectation = expectation(description: "Task has finished")
+    
+    let spyAsyncSequence = SpyAsyncSequenceForOnNextCall<Int> {
+      canCancelExpectation.fulfill()
+    }
+    
+    let stream = AsyncThrowingPassthroughSubject<Int, Error>()
+    let sut = spyAsyncSequence
+      .multicast(stream)
+      .autoconnect()
+    
+    let task = Task {
+      for try await _ in sut {}
+      taskHasFinishedExpectation.fulfill()
+    }
+    
+    await fulfillment(of: [canCancelExpectation], timeout: 1)
+    
+    task.cancel()
+    
+    await fulfillment(of: [taskHasFinishedExpectation], timeout: 1)
   }
 }

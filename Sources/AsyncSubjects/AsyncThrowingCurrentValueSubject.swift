@@ -67,28 +67,32 @@ public final class AsyncThrowingCurrentValueSubject<Element, Failure: Error>: As
   /// Sends a value to all consumers
   /// - Parameter element: the value to send
   public func send(_ element: Element) {
-    self.state.withCriticalRegion { state in
+    let channels = self.state.withCriticalRegion { state -> [AsyncThrowingBufferedChannel<Element, Error>] in
       state.current = element
-      for channel in state.channels.values {
-        channel.send(element)
-      }
+      return Array(state.channels.values)
+    }
+
+    for channel in channels {
+      channel.send(element)
     }
   }
 
   /// Finishes the subject with either a normal ending or an error.
   /// - Parameter termination: The termination to finish the subject.
   public func send(_ termination: Termination<Failure>) {
-    self.state.withCriticalRegion { state in
+    let channels = self.state.withCriticalRegion { state -> [AsyncThrowingBufferedChannel<Element, Error>] in
       state.terminalState = termination
       let channels = Array(state.channels.values)
       state.channels.removeAll()
-      for channel in channels {
-        switch termination {
-          case .finished:
-            channel.finish()
-          case .failure(let error):
-            channel.fail(error)
-        }
+      return channels
+    }
+
+    for channel in channels {
+      switch termination {
+        case .finished:
+          channel.finish()
+        case .failure(let error):
+          channel.fail(error)
       }
     }
   }
@@ -97,8 +101,8 @@ public final class AsyncThrowingCurrentValueSubject<Element, Failure: Error>: As
   ) -> (iterator: AsyncThrowingBufferedChannel<Element, Error>.Iterator, unregister: @Sendable () -> Void) {
     let asyncBufferedChannel = AsyncThrowingBufferedChannel<Element, Error>()
 
-    let (terminalState, current) = self.state.withCriticalRegion { state -> (Termination?, Element) in
-      (state.terminalState, state.current)
+    let terminalState = self.state.withCriticalRegion { state -> Termination? in
+      state.terminalState
     }
 
     if let terminalState = terminalState {
@@ -111,11 +115,10 @@ public final class AsyncThrowingCurrentValueSubject<Element, Failure: Error>: As
       return (asyncBufferedChannel.makeAsyncIterator(), {})
     }
 
-    asyncBufferedChannel.send(current)
-
     let consumerId = self.state.withCriticalRegion { state -> Int in
       state.ids += 1
       state.channels[state.ids] = asyncBufferedChannel
+      asyncBufferedChannel.send(state.current)
       return state.ids
     }
 

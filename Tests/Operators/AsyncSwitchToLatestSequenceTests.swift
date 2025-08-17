@@ -5,6 +5,7 @@
 //  Created by Thibault Wittemberg on 04/01/2022.
 //
 
+import AsyncAlgorithms
 @testable import AsyncExtensions
 import XCTest
 
@@ -40,15 +41,15 @@ private struct LongAsyncSequence<Element>: AsyncSequence, AsyncIteratorProtocol 
   }
 
   mutating func next() async throws -> Element? {
-    return try await withTaskCancellationHandler { [onCancel] in
-      onCancel()
-    } operation: {
+    return try await withTaskCancellationHandler {
       try await Task.sleep(nanoseconds: self.interval.nanoseconds)
       self.currentIndex += 1
       if self.currentIndex == self.failAt {
         throw MockError(code: 0)
       }
       return self.elements.next()
+    } onCancel: { [onCancel] in
+      onCancel()
     }
   }
 
@@ -102,10 +103,10 @@ final class AsyncSwitchToLatestSequenceTests: XCTestCase {
 
   func testSwitchToLatest_propagates_errors_when_base_sequence_fails() async {
     let sequences = [
-      AsyncLazySequence([1, 2, 3]).eraseToAnyAsyncSequence(),
-      AsyncLazySequence([4, 5, 6]).eraseToAnyAsyncSequence(),
-      AsyncLazySequence([7, 8, 9]).eraseToAnyAsyncSequence(), // should fail here
-      AsyncLazySequence([10, 11, 12]).eraseToAnyAsyncSequence(),
+      [1, 2, 3].async.eraseToAnyAsyncSequence(),
+      [4, 5, 6].async.eraseToAnyAsyncSequence(),
+      [7, 8, 9].async.eraseToAnyAsyncSequence(), // should fail here
+      [10, 11, 12].async.eraseToAnyAsyncSequence(),
     ]
 
     let sourceSequence = LongAsyncSequence(elements: sequences, interval: .milliseconds(100), failAt: 2)
@@ -151,7 +152,7 @@ final class AsyncSwitchToLatestSequenceTests: XCTestCase {
     }
   }
 
-  func testSwitchToLatest_finishes_when_task_is_cancelled_after_switched() {
+  func testSwitchToLatest_finishes_when_task_is_cancelled_after_switched() async {
     let canCancelExpectation = expectation(description: "The first element has been emitted")
     let hasCancelExceptation = expectation(description: "The task has been cancelled")
     let taskHasFinishedExpectation = expectation(description: "The task has finished")
@@ -169,18 +170,18 @@ final class AsyncSwitchToLatestSequenceTests: XCTestCase {
       for try await element in sut {
         firstElement = element
         canCancelExpectation.fulfill()
-        wait(for: [hasCancelExceptation], timeout: 5)
+        await fulfillment(of: [hasCancelExceptation], timeout: 5)
       }
       XCTAssertEqual(firstElement, 3)
       taskHasFinishedExpectation.fulfill()
     }
 
-    wait(for: [canCancelExpectation], timeout: 5) // one element has been emitted, we can cancel the task
+    await fulfillment(of: [canCancelExpectation], timeout: 5) // one element has been emitted, we can cancel the task
 
     task.cancel()
 
     hasCancelExceptation.fulfill() // we can release the lock in the for loop
 
-    wait(for: [taskHasFinishedExpectation], timeout: 5) // task has been cancelled and has finished
+    await fulfillment(of: [taskHasFinishedExpectation], timeout: 5) // task has been cancelled and has finished
   }
 }

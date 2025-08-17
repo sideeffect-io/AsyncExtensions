@@ -52,23 +52,27 @@ public final class AsyncPassthroughSubject<Element>: AsyncSubject {
   /// Sends a value to all consumers
   /// - Parameter element: the value to send
   public func send(_ element: Element) {
-    self.state.withCriticalRegion { state in
-      for channel in state.channels.values {
-        channel.send(element)
-      }
+    let channels = self.state.withCriticalRegion { state in
+      state.channels.values
+    }
+
+    for channel in channels {
+      channel.send(element)
     }
   }
 
   /// Finishes the subject with a normal ending.
   /// - Parameter termination: The termination to finish the subject
   public func send(_ termination: Termination<Failure>) {
-    self.state.withCriticalRegion { state in
+    let channels = self.state.withCriticalRegion { state -> [AsyncBufferedChannel<Element>] in
       state.terminalState = termination
       let channels = Array(state.channels.values)
       state.channels.removeAll()
-      for channel in channels {
-        channel.finish()
-      }
+      return channels
+    }
+
+    for channel in channels {
+      channel.finish()
     }
   }
 
