@@ -48,8 +48,6 @@ final class Regulator<Base: AsyncSequence>: @unchecked Sendable {
 
   func iterate() async {
     await withTaskCancellationHandler {
-      self.unsuspendAndExitOnCancel()
-    } operation: {
       var mutableBase = base.makeAsyncIterator()
 
       do {
@@ -99,6 +97,8 @@ final class Regulator<Base: AsyncSequence>: @unchecked Sendable {
         }
         self.onNextRegulatedElement(.element(result: .failure(error)))
       }
+    } onCancel: {
+      self.unsuspendAndExitOnCancel()
     }
   }
 
