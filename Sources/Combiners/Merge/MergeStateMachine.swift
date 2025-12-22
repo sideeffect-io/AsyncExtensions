@@ -98,7 +98,8 @@ struct MergeStateMachine<Element>: Sendable {
     var regulators = [Regulator<Base>]()
 
     for base in bases {
-      let regulator = Regulator<Base>(base, onNextRegulatedElement: { [state] in Self.onNextRegulatedElement($0, state: state) })
+      let regulator = Regulator<Base>(base, onNextRegulatedElement: { [state] in Self.onNextRegulatedElement($0, state: state) }
+      )
       regulators.append(regulator)
     }
 

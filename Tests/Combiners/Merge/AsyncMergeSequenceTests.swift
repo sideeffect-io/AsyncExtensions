@@ -76,7 +76,6 @@ final class AsyncMergeSequenceTests: XCTestCase {
 
     let expectedElements = asyncSequence1 + asyncSequence2 + asyncSequence3 + asyncSequence4
 
-
     let sut = merge(asyncSequence1.async, asyncSequence2.async, asyncSequence3.async, asyncSequence4.async)
 
     var receivedElements = [Int]()
@@ -247,7 +246,7 @@ final class AsyncMergeSequenceTests: XCTestCase {
       for try await element in sut {
         firstElement = element
         canCancelExpectation.fulfill()
-        wait(for: [hasCancelExceptation], timeout: 5)
+        await fulfillment(of: [hasCancelExceptation], timeout: 5)
       }
       XCTAssertEqual(firstElement, 10)
       taskHasFinishedExpectation.fulfill()
@@ -288,5 +287,23 @@ final class AsyncMergeSequenceTests: XCTestCase {
     task.cancel()
 
     wait(for: [hasCancelExceptation], timeout: 1)
+  }
+
+  func testMerge_finishes_when_empty_array_of_base() {
+    let sut = AsyncMergeSequence<AsyncStream<Int>>([])
+    let hasFinishedExpectation = expectation(description: "Merge has finished")
+
+    let task = Task {
+      var received = [Int]()
+      for try await element in sut {
+        received.append(element)
+      }
+      XCTAssertTrue(received.isEmpty)
+      hasFinishedExpectation.fulfill()
+    }
+
+    wait(for: [hasFinishedExpectation], timeout: 1)
+
+    task.cancel()
   }
 }

@@ -34,15 +34,19 @@ public struct AsyncMergeSequence<Base: AsyncSequence>: AsyncSequence {
   }
 
   public struct Iterator: AsyncIteratorProtocol {
+    private let isEmpty: Bool
     let mergeStateMachine: MergeStateMachine<Element>
 
     init(bases: [Base]) {
+      isEmpty = bases.isEmpty
       self.mergeStateMachine = MergeStateMachine(
         bases
       )
     }
 
     public mutating func next() async rethrows -> Element? {
+      guard !self.isEmpty else { return nil }
+
       let mergedElement = await self.mergeStateMachine.next()
       switch mergedElement {
         case .element(let result):
