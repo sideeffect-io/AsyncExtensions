@@ -5,7 +5,7 @@ on: [push]
 jobs:
   Build:
 
-    runs-on: macos-12
+    runs-on: macos-latest
 
     steps:
       - name: Checkout branch
@@ -15,7 +15,7 @@ jobs:
 
   Test:
 
-    runs-on: macos-12
+    runs-on: macos-latest
 
     steps:
       - name: Checkout branch
