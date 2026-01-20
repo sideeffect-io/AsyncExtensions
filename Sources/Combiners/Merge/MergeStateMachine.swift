@@ -240,7 +240,7 @@ struct MergeStateMachine<Element>: Sendable {
         }
       }
 
-      if case .termination = regulatedElement, case .element(.failure) = regulatedElement {
+      if case .element(.failure) = regulatedElement {
         self.task.cancel()
       }
 

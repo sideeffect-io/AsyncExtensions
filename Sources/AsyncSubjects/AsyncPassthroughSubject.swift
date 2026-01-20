@@ -30,7 +30,7 @@
 /// passthrough.send(2)
 /// passthrough.send(.finished)
 /// ```
-public final class AsyncPassthroughSubject<Element>: AsyncSubject {
+public final class AsyncPassthroughSubject<Element: Sendable>: AsyncSubject {
   public typealias Element = Element
   public typealias Failure = Never
   public typealias AsyncIterator = Iterator

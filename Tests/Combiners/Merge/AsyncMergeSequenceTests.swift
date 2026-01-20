@@ -41,6 +41,34 @@ private struct TimedAsyncSequence<Element>: AsyncSequence, AsyncIteratorProtocol
   }
 }
 
+private struct CancellationAwareSequence<Element>: AsyncSequence, AsyncIteratorProtocol {
+  typealias Element = Element
+  typealias AsyncIterator = CancellationAwareSequence
+
+  let onStart: @Sendable () -> Void
+  let onCancel: @Sendable () -> Void
+  var hasStarted = false
+
+  mutating func next() async throws -> Element? {
+    if !hasStarted {
+      hasStarted = true
+      onStart()
+    }
+
+    do {
+      try await Task.sleep(nanoseconds: 5_000_000_000)
+      return nil
+    } catch {
+      onCancel()
+      return nil
+    }
+  }
+
+  func makeAsyncIterator() -> AsyncIterator {
+    self
+  }
+}
+
 final class AsyncMergeSequenceTests: XCTestCase {
   func testMerge_merges_sequences_according_to_the_timeline_using_asyncSequences() async throws {
     // -- 0 ------------------------------- 1000 ----------------------------- 2000 -
@@ -305,5 +333,35 @@ final class AsyncMergeSequenceTests: XCTestCase {
     wait(for: [hasFinishedExpectation], timeout: 1)
 
     task.cancel()
+  }
+
+  func testMerge_cancels_other_bases_on_error() async {
+    let baseStartedExpectation = expectation(description: "The blocking base has started")
+    let baseCancelledExpectation = expectation(description: "The blocking base has been cancelled")
+
+    let blockingBase = CancellationAwareSequence<Int>(
+      onStart: { baseStartedExpectation.fulfill() },
+      onCancel: { baseCancelledExpectation.fulfill() }
+    )
+    let failingBase = TimedAsyncSequence(intervalInMills: [0, 0], sequence: [1, 2], indexOfError: 1)
+
+    let sut = merge(failingBase, blockingBase)
+    var iterator = sut.makeAsyncIterator()
+
+    do {
+      _ = try await iterator.next()
+    } catch {
+      XCTFail("The first element should not fail")
+    }
+    await fulfillment(of: [baseStartedExpectation], timeout: 1)
+
+    do {
+      _ = try await iterator.next()
+      XCTFail("The iteration should fail")
+    } catch {
+      XCTAssertEqual(error as? MockError, MockError(code: 1))
+    }
+
+    await fulfillment(of: [baseCancelledExpectation], timeout: 1)
   }
 }

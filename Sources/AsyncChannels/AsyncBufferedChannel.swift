@@ -29,7 +29,7 @@ import OrderedCollections
 /// sut.send(3)
 /// sut.finish()
 /// ```
-public final class AsyncBufferedChannel<Element>: AsyncSequence, Sendable {
+public final class AsyncBufferedChannel<Element: Sendable>: AsyncSequence, Sendable {
   public typealias Element = Element
   public typealias AsyncIterator = Iterator
 

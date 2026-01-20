@@ -39,6 +39,39 @@ private class SpyAsyncSequenceForNumberOfIterators<Element>: AsyncSequence {
   }
 }
 
+private struct CancellationAwareSequence: AsyncSequence {
+  typealias Element = Int
+  typealias AsyncIterator = Iterator
+
+  let onStart: @Sendable () -> Void
+  let onCancel: @Sendable () -> Void
+
+  func makeAsyncIterator() -> AsyncIterator {
+    Iterator(onStart: self.onStart, onCancel: self.onCancel)
+  }
+
+  struct Iterator: AsyncIteratorProtocol {
+    let onStart: @Sendable () -> Void
+    let onCancel: @Sendable () -> Void
+    var hasStarted = false
+
+    mutating func next() async throws -> Int? {
+      if !hasStarted {
+        hasStarted = true
+        onStart()
+      }
+
+      do {
+        try await Task.sleep(nanoseconds: 5_000_000_000)
+        return nil
+      } catch {
+        onCancel()
+        return nil
+      }
+    }
+  }
+}
+
 final class AsyncMulticastSequenceTests: XCTestCase {
   func test_multiple_loops_receive_elements_from_single_baseIterator() {
     let taskHaveIterators = expectation(description: "All tasks have their iterator")
@@ -155,5 +188,27 @@ final class AsyncMulticastSequenceTests: XCTestCase {
       XCTAssertEqual(receivedElement, [1])
       XCTAssertEqual(error as? MockError, expectedError)
     }
+  }
+
+  func test_multicast_cancels_upstream_when_consumer_cancels() async {
+    let upstreamStartedExpectation = expectation(description: "Upstream started")
+    let upstreamCancelledExpectation = expectation(description: "Upstream cancelled")
+
+    let base = CancellationAwareSequence(
+      onStart: { upstreamStartedExpectation.fulfill() },
+      onCancel: { upstreamCancelledExpectation.fulfill() }
+    )
+    let stream = AsyncThrowingPassthroughSubject<Int, Error>()
+    let sut = base.multicast(stream).autoconnect()
+
+    let task = Task {
+      var iterator = sut.makeAsyncIterator()
+      _ = try? await iterator.next()
+    }
+
+    await fulfillment(of: [upstreamStartedExpectation], timeout: 1)
+    task.cancel()
+
+    await fulfillment(of: [upstreamCancelledExpectation], timeout: 1)
   }
 }

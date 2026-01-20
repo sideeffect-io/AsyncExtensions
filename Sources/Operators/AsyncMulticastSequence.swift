@@ -105,37 +105,43 @@ where Base.Element == Subject.Element, Subject.Failure == Error, Base.AsyncItera
   }
 
   func next() async {
-    await Task {
-      let (canAccessBase, iterator) = self.state.withCriticalRegion { state -> (Bool, Base.AsyncIterator?) in
-        switch state {
-          case .available(let iterator):
-            state = .busy
-            return (true, iterator)
-          case .busy:
-            return (false, nil)
-        }
+    guard !Task.isCancelled else { return }
+
+    let (canAccessBase, iterator) = self.state.withCriticalRegion { state -> (Bool, Base.AsyncIterator?) in
+      switch state {
+        case .available(let iterator):
+          state = .busy
+          return (true, iterator)
+        case .busy:
+          return (false, nil)
       }
+    }
 
-      guard canAccessBase, var iterator = iterator else { return }
-
-      let toSend: Result<Element?, Error>
-      do {
-        let element = try await iterator.next()
-        toSend = .success(element)
-      } catch {
-        toSend = .failure(error)
-      }
-
+    guard canAccessBase, var iterator = iterator else { return }
+    defer {
       self.state.withCriticalRegion { state in
         state = .available(iterator)
       }
+    }
 
-      switch toSend {
-        case .success(.some(let element)): self.subject.send(element)
-        case .success(.none): self.subject.send(.finished)
-        case .failure(let error): self.subject.send(.failure(error))
-      }
-    }.value
+    guard !Task.isCancelled else { return }
+
+    let toSend: Result<Element?, Error>
+    do {
+      let element = try await iterator.next()
+      toSend = .success(element)
+    } catch {
+      guard !Task.isCancelled else { return }
+      toSend = .failure(error)
+    }
+
+    guard !Task.isCancelled else { return }
+
+    switch toSend {
+      case .success(.some(let element)): self.subject.send(element)
+      case .success(.none): self.subject.send(.finished)
+      case .failure(let error): self.subject.send(.failure(error))
+    }
   }
 
   public func makeAsyncIterator() -> AsyncIterator {
