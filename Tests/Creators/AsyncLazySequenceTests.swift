@@ -36,7 +36,7 @@ final class AsyncLazySequenceTests: XCTestCase {
       for await element in sut {
         firstElement = element
         canCancelExpectation.fulfill()
-        wait(for: [hasCancelExceptation], timeout: 5)
+        await fulfillment(of: [hasCancelExceptation], timeout: 5)
       }
       XCTAssertEqual(firstElement!, 0) // the AsyncSequence is cancelled having only emitted the first element
     }

@@ -54,12 +54,12 @@ public struct AsyncPrependSequence<Base: AsyncSequence>: AsyncSequence {
 
   public struct Iterator: AsyncIteratorProtocol {
     var base: Base.AsyncIterator
-    var prependElement: () async throws -> Element
+    var prependElement: @Sendable () -> Element
     var hasBeenDelivered = false
 
     public init(
       base: Base.AsyncIterator,
-      prependElement: @escaping () async throws -> Element
+      prependElement: @Sendable @escaping () -> Element
     ) {
       self.base = base
       self.prependElement = prependElement
@@ -70,7 +70,7 @@ public struct AsyncPrependSequence<Base: AsyncSequence>: AsyncSequence {
 
       if !self.hasBeenDelivered {
         self.hasBeenDelivered = true
-        return try await prependElement()
+        return prependElement()
       }
 
       return try await self.base.next()

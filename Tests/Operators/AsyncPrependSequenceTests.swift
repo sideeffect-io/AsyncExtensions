@@ -37,7 +37,7 @@ final class AsyncPrependSequenceTests: XCTestCase {
       for try await element in prependedSequence {
         firstElement = element
         canCancelExpectation.fulfill()
-        wait(for: [hasCancelExceptation], timeout: 5)
+        await fulfillment(of: [hasCancelExceptation], timeout: 5)
       }
       XCTAssertEqual(firstElement, 0)
       taskHasFinishedExpectation.fulfill()

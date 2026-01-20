@@ -101,47 +101,42 @@ where Base.Element == Subject.Element, Subject.Failure == Error, Base.AsyncItera
 
   /// Allow the `AsyncIterator` to produce elements.
   public func connect() {
+    self.isConnected.apply(criticalState: true)
     self.connectedGate.send(())
   }
 
   func next() async {
-    guard !Task.isCancelled else { return }
-
-    let (canAccessBase, iterator) = self.state.withCriticalRegion { state -> (Bool, Base.AsyncIterator?) in
-      switch state {
-        case .available(let iterator):
-          state = .busy
-          return (true, iterator)
-        case .busy:
-          return (false, nil)
+    await Task {
+      let (canAccessBase, iterator) = self.state.withCriticalRegion { state -> (Bool, Base.AsyncIterator?) in
+        switch state {
+          case .available(let iterator):
+            state = .busy
+            return (true, iterator)
+          case .busy:
+            return (false, nil)
+        }
       }
-    }
 
-    guard canAccessBase, var iterator = iterator else { return }
-    defer {
+      guard canAccessBase, var iterator = iterator else { return }
+
+      let toSend: Result<Element?, Error>
+      do {
+        let element = try await iterator.next()
+        toSend = .success(element)
+      } catch {
+        toSend = .failure(error)
+      }
+
       self.state.withCriticalRegion { state in
         state = .available(iterator)
       }
-    }
 
-    guard !Task.isCancelled else { return }
-
-    let toSend: Result<Element?, Error>
-    do {
-      let element = try await iterator.next()
-      toSend = .success(element)
-    } catch {
-      guard !Task.isCancelled else { return }
-      toSend = .failure(error)
-    }
-
-    guard !Task.isCancelled else { return }
-
-    switch toSend {
-      case .success(.some(let element)): self.subject.send(element)
-      case .success(.none): self.subject.send(.finished)
-      case .failure(let error): self.subject.send(.failure(error))
-    }
+      switch toSend {
+        case .success(.some(let element)): self.subject.send(element)
+        case .success(.none): self.subject.send(.finished)
+        case .failure(let error): self.subject.send(.failure(error))
+      }
+    }.value
   }
 
   public func makeAsyncIterator() -> AsyncIterator {
@@ -163,14 +158,8 @@ where Base.Element == Subject.Element, Subject.Failure == Error, Base.AsyncItera
     public mutating func next() async rethrows -> Element? {
       guard !Task.isCancelled else { return nil }
       
-      let shouldWaitForGate = self.isConnected.withCriticalRegion { isConnected -> Bool in
-        if !isConnected {
-          isConnected = true
-          return true
-        }
-        return false
-      }
-      if shouldWaitForGate {
+      let isConnected = self.isConnected.withCriticalRegion { $0 }
+      if !isConnected {
         await self.connectedGateIterator.next()
       }
 

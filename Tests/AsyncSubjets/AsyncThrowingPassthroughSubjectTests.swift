@@ -91,15 +91,15 @@ final class AsyncThrowingPassthroughSubjectTests: XCTestCase {
       hasFinishedExpectation.fulfill()
     }
 
-    wait(for: [isReadyToBeIteratedExpectation], timeout: 1)
+    await fulfillment(of: [isReadyToBeIteratedExpectation], timeout: 1)
 
     sut.send(1)
 
-    wait(for: [hasReceivedOneElementExpectation], timeout: 1)
+    await fulfillment(of: [hasReceivedOneElementExpectation], timeout: 1)
 
     sut.send( .finished)
 
-    wait(for: [hasFinishedExpectation], timeout: 1)
+    await fulfillment(of: [hasFinishedExpectation], timeout: 1)
 
     var iterator = sut.makeAsyncIterator()
     let received = try await iterator.next()
@@ -150,15 +150,15 @@ final class AsyncThrowingPassthroughSubjectTests: XCTestCase {
       }
     }
 
-    wait(for: [isReadyToBeIteratedExpectation], timeout: 1)
+    await fulfillment(of: [isReadyToBeIteratedExpectation], timeout: 1)
 
     sut.send(1)
 
-    wait(for: [hasReceivedOneElementExpectation], timeout: 1)
+    await fulfillment(of: [hasReceivedOneElementExpectation], timeout: 1)
 
     sut.send(.failure(expectedError))
 
-    wait(for: [hasFinishedWithFailureExpectation], timeout: 1)
+    await fulfillment(of: [hasFinishedWithFailureExpectation], timeout: 1)
 
     var iterator = sut.makeAsyncIterator()
     do {
@@ -185,7 +185,7 @@ final class AsyncThrowingPassthroughSubjectTests: XCTestCase {
       while let element = try await it.next() {
         receivedElements.append(element)
         canCancelExpectation.fulfill()
-        wait(for: [hasCancelExpectation], timeout: 5)
+        await fulfillment(of: [hasCancelExpectation], timeout: 5)
       }
       XCTAssertEqual(receivedElements, [1])
       taskHasFinishedExpectation.fulfill()
@@ -234,7 +234,7 @@ final class AsyncThrowingPassthroughSubjectTests: XCTestCase {
       return received.sorted()
     }
 
-    await waitForExpectations(timeout: 1)
+    await fulfillment(of: [canSendExpectation], timeout: 1)
 
     // concurrently push values in the sut 1
     let task1 = Task {

@@ -148,12 +148,6 @@ where Base1: Sendable, Base1.Element: Sendable, Base2: Sendable, Base2.Element: 
 
   func next() async rethrows -> (Base1.Element, Base2.Element)? {
     try await withTaskCancellationHandler {
-      let output = self.stateMachine.withCriticalRegion { stateMachine in
-        stateMachine.rootTaskIsCancelled()
-      }
-
-      self.handle(rootTaskIsCancelledOutput: output)
-    } operation: {
       let results = await withUnsafeContinuation { (continuation: UnsafeContinuation<(Result<Base1.Element, Error>, Result<Base2.Element, Error>)?, Never>) in
         let output = self.stateMachine.withCriticalRegion { stateMachine in
           stateMachine.newDemandFromConsumer(suspendedDemand: continuation)
@@ -173,6 +167,12 @@ where Base1: Sendable, Base1.Element: Sendable, Base2: Sendable, Base2.Element: 
       self.handle(demandIsFulfilledOutput: output)
 
       return try (results.0._rethrowGet(), results.1._rethrowGet())
+    } onCancel: {
+      let output = self.stateMachine.withCriticalRegion { stateMachine in
+        stateMachine.rootTaskIsCancelled()
+      }
+
+      self.handle(rootTaskIsCancelledOutput: output)
     }
   }
 

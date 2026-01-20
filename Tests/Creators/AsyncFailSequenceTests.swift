@@ -41,7 +41,7 @@ final class AsyncFailSequenceTests: XCTestCase {
     let task = Task {
       do {
         var iterator = failSequence.makeAsyncIterator()
-        wait(for: [taskHasBeenCancelledExpectation], timeout: 1)
+        await fulfillment(of: [taskHasBeenCancelledExpectation], timeout: 1)
         while let _ = try await iterator.next() {
           XCTFail("The AsyncSequence should not output elements")
         }

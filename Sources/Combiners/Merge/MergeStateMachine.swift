@@ -197,8 +197,6 @@ struct MergeStateMachine<Element>: Sendable {
 
   func next() async -> RegulatedElement<Element> {
     await withTaskCancellationHandler {
-      self.unsuspendAndClearOnCancel()
-    } operation: {
       self.requestNextRegulatedElements()
 
       let regulatedElement = await withUnsafeContinuation { (continuation: UnsafeContinuation<RegulatedElement<Element>, Never>) in
@@ -245,6 +243,8 @@ struct MergeStateMachine<Element>: Sendable {
       }
 
       return regulatedElement
+    } onCancel: {
+      self.unsuspendAndClearOnCancel()
     }
   }
 }

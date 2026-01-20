@@ -140,7 +140,7 @@ final class AsyncZipSequenceTests: XCTestCase {
       for try await element in sut {
         firstElement = element
         canCancelExpectation.fulfill()
-        wait(for: [hasCancelExceptation], timeout: 5)
+        await fulfillment(of: [hasCancelExceptation], timeout: 5)
       }
       XCTAssertEqual(firstElement!.0, 1)
       XCTAssertEqual(firstElement!.1, "1")
@@ -313,7 +313,7 @@ extension AsyncZipSequenceTests {
       for try await element in sut {
         firstElement = element
         canCancelExpectation.fulfill()
-        wait(for: [hasCancelExceptation], timeout: 5)
+        await fulfillment(of: [hasCancelExceptation], timeout: 5)
       }
       XCTAssertEqual(firstElement!.0, 1) // the AsyncSequence is cancelled having only emitted the first element
       XCTAssertEqual(firstElement!.1, "1")
@@ -398,7 +398,7 @@ extension AsyncZipSequenceTests {
       for await element in sut {
         firstElement = element
         canCancelExpectation.fulfill()
-        wait(for: [hasCancelExceptation], timeout: 5)
+        await fulfillment(of: [hasCancelExceptation], timeout: 5)
       }
       XCTAssertEqual(firstElement!, [1, 1, 1, 1, 1])
       taskHasFinishedExpectation.fulfill()

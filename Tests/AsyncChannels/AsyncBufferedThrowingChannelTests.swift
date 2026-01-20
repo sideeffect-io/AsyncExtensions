@@ -46,7 +46,7 @@ final class AsyncBufferedThrowingChannelTests: XCTestCase {
       return received
     }
 
-    wait(for: [iterationIsAwaiting], timeout: 1.0)
+    await fulfillment(of: [iterationIsAwaiting], timeout: 1.0)
 
     // When
     sut.send(1)
@@ -125,19 +125,19 @@ final class AsyncBufferedThrowingChannelTests: XCTestCase {
       for try await element in sut {
         received = element
         taskCanBeCancelled.fulfill()
-        wait(for: [taskWasCancelled], timeout: 1.0)
+        await fulfillment(of: [taskWasCancelled], timeout: 1.0)
       }
       iterationHasFinished.fulfill()
       return received
     }
 
-    wait(for: [taskCanBeCancelled], timeout: 1.0)
+    await fulfillment(of: [taskCanBeCancelled], timeout: 1.0)
 
     // When
     task.cancel()
     taskWasCancelled.fulfill()
 
-    wait(for: [iterationHasFinished], timeout: 1.0)
+    await fulfillment(of: [iterationHasFinished], timeout: 1.0)
 
     // Then
     let received = try await task.value
@@ -211,13 +211,13 @@ final class AsyncBufferedThrowingChannelTests: XCTestCase {
       }
     }
 
-    wait(for: [iteration1IsAwaiting, iteration2IsAwaiting], timeout: 1.0)
+    await fulfillment(of: [iteration1IsAwaiting, iteration2IsAwaiting], timeout: 1.0)
 
     // When
     sut.fail(MockError(code: 1701))
 
     // Then
-    wait(for: [iteration1HasThrown, iteration2HasThrown], timeout: 1.0)
+    await fulfillment(of: [iteration1HasThrown, iteration2HasThrown], timeout: 1.0)
 
     let iterator = sut.makeAsyncIterator()
     do {
@@ -254,12 +254,12 @@ final class AsyncBufferedThrowingChannelTests: XCTestCase {
       return received
     }
 
-    wait(for: [iteration1IsAwaiting, iteration2IsAwaiting], timeout: 1.0)
+    await fulfillment(of: [iteration1IsAwaiting, iteration2IsAwaiting], timeout: 1.0)
 
     // When
     sut.finish()
 
-    wait(for: [iteration1IsFinished, iteration2IsFinished], timeout: 1.0)
+    await fulfillment(of: [iteration1IsFinished, iteration2IsFinished], timeout: 1.0)
 
     let received1 = try await task1.value
     let received2 = try await task2.value
@@ -301,7 +301,7 @@ final class AsyncBufferedThrowingChannelTests: XCTestCase {
     }.cancel()
 
     // Then
-    wait(for: [iterationIsFinished], timeout: 1.0)
+    await fulfillment(of: [iterationIsFinished], timeout: 1.0)
   }
 
   func test_awaiting_uses_id_for_equatable() {

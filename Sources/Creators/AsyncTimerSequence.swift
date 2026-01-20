@@ -78,11 +78,11 @@ public struct AsyncTimerSequence: AsyncSequence {
     }
 
     public mutating func next() async -> Element? {
-      await withTaskCancellationHandler { [task] in
-        task.cancel()
-      } operation: {
+      await withTaskCancellationHandler {
         guard !Task.isCancelled else { return nil }
         return await self.iterator.next()
+      } onCancel: { [task] in
+        task.cancel()
       }
     }
   }

@@ -53,7 +53,7 @@ final class AsyncHandleEventsSequenceTests: XCTestCase {
           firstElementHasBeenReceivedExpectation.fulfill()
         }
 
-        wait(for: [taskHasBeenCancelledExpectation], timeout: 1)
+        await fulfillment(of: [taskHasBeenCancelledExpectation], timeout: 1)
       }
     }
 
@@ -95,7 +95,7 @@ final class AsyncHandleEventsSequenceTests: XCTestCase {
       XCTAssertEqual(error as? MockError, expectedError)
     }
 
-    await waitForExpectations(timeout: 1)
+    await fulfillment(of: [onFinishHasBeenCalledExpectation], timeout: 1)
   }
 
   func test_iteration_finishes_when_task_is_cancelled() {
@@ -112,7 +112,7 @@ final class AsyncHandleEventsSequenceTests: XCTestCase {
       for try await element in handledSequence {
         firstElement = element
         canCancelExpectation.fulfill()
-        wait(for: [hasCancelExceptation], timeout: 5)
+        await fulfillment(of: [hasCancelExceptation], timeout: 5)
       }
       XCTAssertEqual(firstElement, 0)
       taskHasFinishedExpectation.fulfill()

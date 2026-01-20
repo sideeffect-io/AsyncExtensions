@@ -46,7 +46,7 @@ final class AsyncBufferedChannelTests: XCTestCase {
       return received
     }
 
-    wait(for: [iterationIsAwaiting], timeout: 1.0)
+    await fulfillment(of: [iterationIsAwaiting], timeout: 1.0)
 
     // When
     sut.send(1)
@@ -125,19 +125,19 @@ final class AsyncBufferedChannelTests: XCTestCase {
       for await element in sut {
         received = element
         taskCanBeCancelled.fulfill()
-        wait(for: [taskWasCancelled], timeout: 1.0)
+        await fulfillment(of: [taskWasCancelled], timeout: 1.0)
       }
       iterationHasFinished.fulfill()
       return received
     }
 
-    wait(for: [taskCanBeCancelled], timeout: 1.0)
+    await fulfillment(of: [taskCanBeCancelled], timeout: 1.0)
 
     // When
     task.cancel()
     taskWasCancelled.fulfill()
 
-    wait(for: [iterationHasFinished], timeout: 1.0)
+    await fulfillment(of: [iterationHasFinished], timeout: 1.0)
 
     // Then
     let received = await task.value
@@ -170,12 +170,12 @@ final class AsyncBufferedChannelTests: XCTestCase {
       return received
     }
 
-    wait(for: [iteration1IsAwaiting, iteration2IsAwaiting], timeout: 1.0)
+    await fulfillment(of: [iteration1IsAwaiting, iteration2IsAwaiting], timeout: 1.0)
 
     // When
     sut.finish()
 
-    wait(for: [iteration1IsFinished, iteration2IsFinished], timeout: 1.0)
+    await fulfillment(of: [iteration1IsFinished, iteration2IsFinished], timeout: 1.0)
 
     let received1 = await task1.value
     let received2 = await task2.value
@@ -217,7 +217,7 @@ final class AsyncBufferedChannelTests: XCTestCase {
     }.cancel()
 
     // Then
-    wait(for: [iterationIsFinished], timeout: 1.0)
+    await fulfillment(of: [iterationIsFinished], timeout: 1.0)
   }
 
   func test_awaiting_uses_id_for_equatable() {
