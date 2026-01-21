@@ -1,3 +1,17 @@
+**v0.5.5 - Sodium:**
+
+This version add support for a throwing `onStart` closure in the `AsyncHandleEventsSequence`.
+
+**v0.5.4 - Neon:**
+
+This release conforms AnyAsyncSequence to Sendable.
+
+**v0.5.3 - Fluorine:**
+
+The release fixes a conflict on the Failure primary associated type newly defined in Swift.
+
+- Fix Xcode 16 build failure caused by AsyncSubject (https://github.com/sideeffect-io/AsyncExtensions/pull/42)
+
 **v0.5.2 - Oxygen:**
 
 This version is a bug fix version.

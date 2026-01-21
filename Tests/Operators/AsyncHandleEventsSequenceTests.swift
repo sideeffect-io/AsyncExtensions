@@ -28,6 +28,35 @@ final class AsyncHandleEventsSequenceTests: XCTestCase {
     XCTAssertEqual(received.criticalState, ["start", "1", "2", "3", "4", "5", "finish finished"])
   }
 
+    func test_onStart_calls_onFinish_when_throwing() async throws {
+        let received = ManagedCriticalState([String]())
+
+        let sourceSequence = [1, 2, 3, 4, 5].async
+        let sut = sourceSequence.handleEvents {
+            received.withCriticalRegion { $0.append("start") }
+            throw NSError(domain: "error", code: 0)
+        } onElement: { element in
+            received.withCriticalRegion { $0.append("\(element)") }
+        } onCancel: {
+            received.withCriticalRegion { $0.append("cancelled") }
+        } onFinish: { completion in
+            switch completion {
+            case .finished:
+                received.withCriticalRegion { $0.append("finish finished") }
+            case let .failure(error):
+                received.withCriticalRegion { $0.append("finish error \((error as NSError).code)") }
+            }
+        }
+
+        do {
+            for try await _ in sut {}
+            XCTFail("The stream should have thrown")
+        } catch {
+            XCTAssertEqual((error as NSError).code, 0)
+            XCTAssertEqual(received.criticalState, ["start", "finish error 0"])
+        }
+    }
+
   func test_iteration_calls_onCancel_when_task_is_cancelled() {
     let firstElementHasBeenReceivedExpectation = expectation(description: "First element has been emitted")
     let taskHasBeenCancelledExpectation = expectation(description: "The task has been cancelled")

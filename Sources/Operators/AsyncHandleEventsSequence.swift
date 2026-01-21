@@ -40,7 +40,7 @@ public extension AsyncSequence {
   ///   whether it is due to an error or a normal termination.
   /// - Returns: The AsyncSequence that executes the `receiveElement` operation for each element of the source sequence.
   func handleEvents(
-    onStart: (@Sendable () async -> Void)? = nil,
+    onStart: (@Sendable () async throws -> Void)? = nil,
     onElement: (@Sendable (Element) async -> Void)? = nil,
     onCancel: (@Sendable () async -> Void)? = nil,
     onFinish: (@Sendable (Termination<Error>) async -> Void)? = nil
@@ -60,14 +60,14 @@ public struct AsyncHandleEventsSequence<Base: AsyncSequence>: AsyncSequence {
   public typealias AsyncIterator = Iterator
 
   var base: Base
-  let onStart: (@Sendable () async -> Void)?
+  let onStart: (@Sendable () async throws -> Void)?
   let onElement: (@Sendable (Base.Element) async -> Void)?
   let onCancel: (@Sendable () async -> Void)?
   let onFinish: (@Sendable (Termination<Error>) async -> Void)?
 
   public init(
     _ base: Base,
-    onStart: (@Sendable () async -> Void)?,
+    onStart: (@Sendable () async throws -> Void)?,
     onElement: (@Sendable (Base.Element) async -> Void)?,
     onCancel: (@Sendable () async -> Void)?,
     onFinish: (@Sendable (Termination<Error>) async -> Void)?
@@ -92,7 +92,7 @@ public struct AsyncHandleEventsSequence<Base: AsyncSequence>: AsyncSequence {
   public struct Iterator: AsyncIteratorProtocol {
     var base: Base.AsyncIterator
 
-    let onStart: (@Sendable () async -> Void)?
+    let onStart: (@Sendable () async throws -> Void)?
     let onElement: (@Sendable (Base.Element) async -> Void)?
     let onCancel: (@Sendable () async -> Void)?
     let onFinish: (@Sendable (Termination<Error>) async -> Void)?
@@ -101,7 +101,7 @@ public struct AsyncHandleEventsSequence<Base: AsyncSequence>: AsyncSequence {
 
     public init(
       base: Base.AsyncIterator,
-      onStart: (@Sendable () async -> Void)?,
+      onStart: (@Sendable () async throws -> Void)?,
       onElement: (@Sendable (Base.Element) async -> Void)?,
       onCancel: (@Sendable () async -> Void)?,
       onFinish: (@Sendable (Termination<Error>) async -> Void)?
@@ -113,25 +113,25 @@ public struct AsyncHandleEventsSequence<Base: AsyncSequence>: AsyncSequence {
       self.onFinish = onFinish
     }
 
-    public mutating func next() async rethrows -> Element? {
+    public mutating func next() async throws -> Element? {
       guard !Task.isCancelled else {
         await self.onCancel?()
         return nil
       }
 
-      let shouldCallOnStart = self.onStartExecuted.withCriticalRegion { onStartExecuted -> Bool in
-        if !onStartExecuted {
-          onStartExecuted = true
-          return true
-        }
-        return false
-      }
-
-      if shouldCallOnStart {
-        await self.onStart?()
-      }
-
       do {
+        let shouldCallOnStart = self.onStartExecuted.withCriticalRegion { onStartExecuted -> Bool in
+          if !onStartExecuted {
+            onStartExecuted = true
+            return true
+          }
+          return false
+        }
+
+        if shouldCallOnStart {
+          try await self.onStart?()
+        }
+
         let nextElement = try await self.base.next()
 
         if let element = nextElement {
