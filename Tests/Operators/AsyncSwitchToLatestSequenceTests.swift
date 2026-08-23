@@ -57,6 +57,24 @@ private struct LongAsyncSequence<Element>: AsyncSequence, AsyncIteratorProtocol 
   }
 }
 
+private struct NonCooperativeAsyncSequence<Element: Sendable>: AsyncSequence, Sendable {
+  let onSuspend: @Sendable () -> Void
+
+  func makeAsyncIterator() -> Iterator {
+    Iterator(onSuspend: self.onSuspend)
+  }
+
+  struct Iterator: AsyncIteratorProtocol, Sendable {
+    let onSuspend: @Sendable () -> Void
+
+    mutating func next() async -> Element? {
+      await withUnsafeContinuation { (_: UnsafeContinuation<Element?, Never>) in
+        self.onSuspend()
+      }
+    }
+  }
+}
+
 final class AsyncSwitchToLatestSequenceTests: XCTestCase {
   func testSwitchToLatest_switches_to_latest_asyncSequence_and_cancels_previous_ones() async throws {
     var asyncSequence1IsCancelled = false
@@ -182,5 +200,68 @@ final class AsyncSwitchToLatestSequenceTests: XCTestCase {
     hasCancelExceptation.fulfill() // we can release the lock in the for loop
 
     wait(for: [taskHasFinishedExpectation], timeout: 5) // task has been cancelled and has finished
+  }
+
+  func testSwitchToLatest_finishes_when_awaiting_an_unfinished_latest_sequence_and_task_is_cancelled() async {
+    let receivedFirstValue = expectation(description: "The first sequence emitted")
+    let receivedSecondValue = expectation(description: "The second sequence emitted")
+    let receivedLatestValue = expectation(description: "The latest sequence emitted")
+    let collectionFinished = expectation(description: "The collection task finished")
+
+    var outerContinuation: AsyncStream<AsyncBufferedChannel<Int>>.Continuation!
+    let outer = AsyncStream<AsyncBufferedChannel<Int>> { continuation in
+      outerContinuation = continuation
+    }
+
+    let collectionTask = Task {
+      for await element in outer.switchToLatest() {
+        switch element {
+          case 1: receivedFirstValue.fulfill()
+          case 2: receivedSecondValue.fulfill()
+          case 4: receivedLatestValue.fulfill()
+          default: XCTFail("Received unexpected element: \(element)")
+        }
+      }
+      collectionFinished.fulfill()
+    }
+
+    let first = AsyncBufferedChannel<Int>()
+    first.send(1)
+    outerContinuation.yield(first)
+    await fulfillment(of: [receivedFirstValue], timeout: 1)
+
+    let second = AsyncBufferedChannel<Int>()
+    second.send(2)
+    outerContinuation.yield(second)
+    await fulfillment(of: [receivedSecondValue], timeout: 1)
+
+    let latest = AsyncBufferedChannel<Int>()
+    latest.send(4)
+    outerContinuation.yield(latest)
+    await fulfillment(of: [receivedLatestValue], timeout: 1)
+
+    collectionTask.cancel()
+
+    await fulfillment(of: [collectionFinished], timeout: 1)
+  }
+
+  func testSwitchToLatest_finishes_when_awaiting_a_non_cooperative_outer_sequence_and_task_is_cancelled() async {
+    let outerSequenceIsSuspended = expectation(description: "The outer sequence is suspended")
+    let collectionFinished = expectation(description: "The collection task finished")
+    let outer = NonCooperativeAsyncSequence<AsyncBufferedChannel<Int>> {
+      outerSequenceIsSuspended.fulfill()
+    }
+
+    let collectionTask = Task {
+      for await _ in outer.switchToLatest() {}
+      collectionFinished.fulfill()
+    }
+
+    await fulfillment(of: [outerSequenceIsSuspended], timeout: 1)
+    await Task.yield()
+
+    collectionTask.cancel()
+
+    await fulfillment(of: [collectionFinished], timeout: 1)
   }
 }

@@ -85,9 +85,10 @@ where Base.Element: AsyncSequence, Base: Sendable, Base.Element.Element: Sendabl
     struct State {
       var childTask: Task<ChildValue?, Never>?
       var base: BaseState
+      var isCancelled: Bool
 
       static var initial: State {
-        State(childTask: nil, base: .notStarted)
+        State(childTask: nil, base: .notStarted, isCancelled: false)
       }
     }
 
@@ -97,7 +98,7 @@ where Base.Element: AsyncSequence, Base: Sendable, Base.Element.Element: Sendabl
     }
 
     enum NextDecision {
-      case immediatelyResume(Task<ChildValue?, Never>)
+      case immediatelyResume(Task<ChildValue?, Never>?)
       case suspend
     }
 
@@ -140,6 +141,8 @@ where Base.Element: AsyncSequence, Base: Sendable, Base.Element.Element: Sendabl
           for try await child in base {
             let childIterator = child.makeAsyncIterator()
             let decision = state.withCriticalRegion { state -> BaseDecision in
+              guard !state.isCancelled else { return .cancelPreviousChildTask(nil) }
+
               switch state.base {
                 case .waitingForChildIterator(let continuation):
                   state.base = .processingChildIterator(.success(childIterator))
@@ -225,6 +228,8 @@ where Base.Element: AsyncSequence, Base: Sendable, Base.Element.Element: Sendabl
         while true {
           let childTask = await withUnsafeContinuation { [state] (continuation: UnsafeContinuation<Task<ChildValue?, Never>?, Never>) in
             let decision = state.withCriticalRegion { state -> NextDecision in
+              guard !state.isCancelled else { return .immediatelyResume(nil) }
+
               switch state.base {
                 case .newChildIteratorAvailable(let childIterator):
                   state.base = .processingChildIterator(childIterator)
@@ -260,7 +265,9 @@ where Base.Element: AsyncSequence, Base: Sendable, Base.Element.Element: Sendabl
           let value = await childTask?.value
 
           let decision = state.withCriticalRegion { state -> PostElementDecision in
-            if state.base.isNewAvailableChildIterator {
+            if state.isCancelled {
+              return .returnFinish
+            } else if state.base.isNewAvailableChildIterator {
               return .pass
             } else {
               switch value {
@@ -299,10 +306,23 @@ where Base.Element: AsyncSequence, Base: Sendable, Base.Element.Element: Sendabl
           }
         }
       } onCancel: { [baseTask, state] in
-        baseTask?.cancel()
-        state.withCriticalRegion {
-          $0.childTask?.cancel()
+        let cancellation: (
+          continuation: UnsafeContinuation<Task<ChildValue?, Never>?, Never>?,
+          childTask: Task<ChildValue?, Never>?
+        ) = state.withCriticalRegion { state in
+          state.isCancelled = true
+
+          if case .waitingForChildIterator(let continuation) = state.base {
+            state.base = .finished(nil)
+            return (continuation, state.childTask)
+          } else {
+            return (nil, state.childTask)
+          }
         }
+
+        baseTask?.cancel()
+        cancellation.childTask?.cancel()
+        cancellation.continuation?.resume(returning: nil)
       }
     }
   }
