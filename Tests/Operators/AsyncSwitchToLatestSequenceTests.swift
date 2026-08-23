@@ -75,6 +75,40 @@ private struct NonCooperativeAsyncSequence<Element: Sendable>: AsyncSequence, Se
   }
 }
 
+private struct IteratorLifetimeSequence<Element: Sendable>: AsyncSequence, Sendable {
+  let element: Element
+  let onIteratorCreated: @Sendable () -> Void
+  let onIteratorReleased: @Sendable () -> Void
+
+  func makeAsyncIterator() -> Iterator {
+    self.onIteratorCreated()
+    return Iterator(element: self.element, onReleased: self.onIteratorReleased)
+  }
+
+  final class Iterator: AsyncIteratorProtocol, Sendable {
+    let element: Element
+    let onReleased: @Sendable () -> Void
+    let hasEmitted = ManagedCriticalState(false)
+
+    init(element: Element, onReleased: @escaping @Sendable () -> Void) {
+      self.element = element
+      self.onReleased = onReleased
+    }
+
+    deinit {
+      self.onReleased()
+    }
+
+    func next() async -> Element? {
+      self.hasEmitted.withCriticalRegion { hasEmitted in
+        guard !hasEmitted else { return nil }
+        hasEmitted = true
+        return self.element
+      }
+    }
+  }
+}
+
 final class AsyncSwitchToLatestSequenceTests: XCTestCase {
   func testSwitchToLatest_switches_to_latest_asyncSequence_and_cancels_previous_ones() async throws {
     var asyncSequence1IsCancelled = false
@@ -263,5 +297,36 @@ final class AsyncSwitchToLatestSequenceTests: XCTestCase {
     collectionTask.cancel()
 
     await fulfillment(of: [collectionFinished], timeout: 1)
+  }
+
+  func testSwitchToLatest_releases_previous_iterator_when_new_sequence_arrives_between_downstream_calls() async throws {
+    let firstIteratorCreated = expectation(description: "The first iterator was created")
+    let firstIteratorReleased = expectation(description: "The first iterator was released")
+    let secondIteratorCreated = expectation(description: "The second iterator was created")
+    let (outer, continuation) = AsyncStream<IteratorLifetimeSequence<Int>>.makeStream()
+    var iterator = outer.switchToLatest().makeAsyncIterator()
+
+    continuation.yield(
+      IteratorLifetimeSequence(
+        element: 1,
+        onIteratorCreated: { firstIteratorCreated.fulfill() },
+        onIteratorReleased: { firstIteratorReleased.fulfill() }
+      )
+    )
+
+    let firstValue = await iterator.next()
+    XCTAssertEqual(firstValue, 1)
+    await fulfillment(of: [firstIteratorCreated], timeout: 1)
+
+    continuation.yield(
+      IteratorLifetimeSequence(
+        element: 2,
+        onIteratorCreated: { secondIteratorCreated.fulfill() },
+        onIteratorReleased: {}
+      )
+    )
+
+    await fulfillment(of: [secondIteratorCreated, firstIteratorReleased], timeout: 1)
+    continuation.finish()
   }
 }

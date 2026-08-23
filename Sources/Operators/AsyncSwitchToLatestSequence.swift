@@ -265,6 +265,8 @@ where Base.Element: AsyncSequence, Base: Sendable, Base.Element.Element: Sendabl
           let value = await childTask?.value
 
           let decision = state.withCriticalRegion { state -> PostElementDecision in
+            state.childTask = nil
+
             if state.isCancelled {
               return .returnFinish
             } else if state.base.isNewAvailableChildIterator {
