@@ -43,6 +43,8 @@ AsyncStream)
 * [AsyncReplaySubject](./Sources/AsyncSubjects/AsyncReplaySubject.swift): Subject with a shared output. Maintains and replays a buffered amount of values
 * [AsyncThrowingReplaySubject](./Sources/AsyncSubjects/AsyncThrowingReplaySubject.swift): Throwing subject with a shared output. Maintains and replays a buffered amount of values
 
+A consumer is unregistered from a subject, and stops buffering its values, when its iteration finishes, throws or is cancelled, or when the last copy of its iterator is released, as after a `break` out of a `for await` loop. This applies to `multicast(_:)` and `share()`, which are built on subjects. It matches `AsyncStream`, whose termination handler runs when its iterator is released.
+
 ### Combiners
 * [`merge(_:)`](./Sources/Combiners/Merge/AsyncMergeSequence.swift): Merges any `AsyncSequence` into an AsyncSequence of elements
 * [`withLatest(_:)`](./Sources/Combiners/WithLatestFrom/AsyncWithLatestFromSequence.swift): Combines elements from self with the last known element from an other `AsyncSequence`

@@ -227,4 +227,20 @@ final class AsyncReplaySubjectTests: XCTestCase {
     XCTAssertEqual(receivedElementsA, expectedElements)
     XCTAssertEqual(receivedElementsB, expectedElements)
   }
+
+  func test_consumer_that_stops_early_is_unregistered_when_its_iterator_is_released() async {
+    let sut = AsyncReplaySubject<Int>(bufferSize: 1)
+    func consumers() -> Int { sut.state.withCriticalRegion { $0.channels.count } }
+
+    do {
+      var iterator = sut.makeAsyncIterator()
+      XCTAssertEqual(consumers(), 1)
+      sut.send(1)
+      // take one element and stop, as a loop left by break or return does
+      _ = await iterator.next()
+      XCTAssertEqual(consumers(), 1)
+    }
+
+    XCTAssertEqual(consumers(), 0)
+  }
 }

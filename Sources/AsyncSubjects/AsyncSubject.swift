@@ -29,3 +29,19 @@ public protocol AsyncSubject: AnyObject, AsyncSequence, Sendable where AsyncIter
 public protocol AsyncSubjectIterator: AsyncIteratorProtocol, Sendable {
   var hasBufferedElements: Bool { get }
 }
+
+/// A consumer's place in a subject, which it leaves when the last copy of its iterator is
+/// released. An iteration left early, by `break`, `return` or a throw from its own body, never
+/// has its `next()` cancelled or finished, and would otherwise stay registered, buffering every
+/// element sent from then on.
+final class AsyncSubjectRegistration: Sendable {
+  private let unregister: @Sendable () -> Void
+
+  init(_ unregister: @escaping @Sendable () -> Void) {
+    self.unregister = unregister
+  }
+
+  deinit {
+    unregister()
+  }
+}

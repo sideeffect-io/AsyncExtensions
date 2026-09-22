@@ -110,10 +110,13 @@ public final class AsyncPassthroughSubject<Element: Sendable>: AsyncSubject {
   public struct Iterator: AsyncSubjectIterator {
     var iterator: AsyncBufferedChannel<Element>.Iterator
     let unregister: @Sendable () -> Void
+    // unregisters the consumer when the last copy of this iterator goes, however it stopped
+    private let registration: AsyncSubjectRegistration
     var isFinished = false
 
     init(asyncSubject: AsyncPassthroughSubject) {
       (self.iterator, self.unregister) = asyncSubject.handleNewConsumer()
+      registration = AsyncSubjectRegistration(unregister)
     }
 
     public var hasBufferedElements: Bool {
