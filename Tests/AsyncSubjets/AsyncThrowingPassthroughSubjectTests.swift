@@ -261,4 +261,18 @@ final class AsyncThrowingPassthroughSubjectTests: XCTestCase {
     XCTAssertEqual(receivedElementsA, expectedElements)
     XCTAssertEqual(receivedElementsB, expectedElements)
   }
+
+  func test_subscription_racing_termination_is_terminated() async {
+    for _ in 0..<10_000 {
+      let sut = AsyncThrowingPassthroughSubject<Int, Error>()
+      var iterator: AsyncThrowingPassthroughSubject<Int, Error>.Iterator?
+
+      race({ iterator = sut.makeAsyncIterator() }, { sut.send(.failure(MockError(code: 1))) })
+
+      let drained = await drainBufferedElements(of: iterator!)
+      guard drained.isTerminated else {
+        return XCTFail("Expected the subscription to be terminated")
+      }
+    }
+  }
 }
