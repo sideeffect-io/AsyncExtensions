@@ -256,4 +256,32 @@ final class AsyncThrowingCurrentValueSubjectTests: XCTestCase {
     XCTAssertEqual(receivedElementsA, expectedElements)
     XCTAssertEqual(receivedElementsB, expectedElements)
   }
+
+  func test_subscription_racing_send_receives_sent_element() async {
+    for _ in 0..<10_000 {
+      let sut = AsyncThrowingCurrentValueSubject<Int, Error>(0)
+      var iterator: AsyncThrowingCurrentValueSubject<Int, Error>.Iterator?
+
+      race({ iterator = sut.makeAsyncIterator() }, { sut.send(1) })
+
+      let drained = await drainBufferedElements(of: iterator!)
+      guard drained.elements.last == 1 else {
+        return XCTFail("Expected to receive the sent element, received \(drained.elements)")
+      }
+    }
+  }
+
+  func test_subscription_racing_termination_is_terminated() async {
+    for _ in 0..<10_000 {
+      let sut = AsyncThrowingCurrentValueSubject<Int, Error>(0)
+      var iterator: AsyncThrowingCurrentValueSubject<Int, Error>.Iterator?
+
+      race({ iterator = sut.makeAsyncIterator() }, { sut.send(.failure(MockError(code: 1))) })
+
+      let drained = await drainBufferedElements(of: iterator!)
+      guard drained.isTerminated else {
+        return XCTFail("Expected the subscription to be terminated")
+      }
+    }
+  }
 }

@@ -91,21 +91,21 @@ public final class AsyncCurrentValueSubject<Element>: AsyncSubject where Element
   func handleNewConsumer() -> (iterator: AsyncBufferedChannel<Element>.Iterator, unregister: @Sendable () -> Void) {
     let asyncBufferedChannel = AsyncBufferedChannel<Element>()
 
-    let (terminalState, current) = self.state.withCriticalRegion { state -> (Termination?, Element) in
-      (state.terminalState, state.current)
-    }
+    let consumerId = self.state.withCriticalRegion { state -> Int? in
+      if let terminalState = state.terminalState, terminalState.isFinished {
+        asyncBufferedChannel.finish()
+        return nil
+      }
 
-    if let terminalState = terminalState, terminalState.isFinished {
-      asyncBufferedChannel.finish()
-      return (asyncBufferedChannel.makeAsyncIterator(), {})
-    }
+      asyncBufferedChannel.send(state.current)
 
-    asyncBufferedChannel.send(current)
-
-    let consumerId = self.state.withCriticalRegion { state -> Int in
       state.ids += 1
       state.channels[state.ids] = asyncBufferedChannel
       return state.ids
+    }
+
+    guard let consumerId = consumerId else {
+      return (asyncBufferedChannel.makeAsyncIterator(), {})
     }
 
     let unregister = { @Sendable [state] in

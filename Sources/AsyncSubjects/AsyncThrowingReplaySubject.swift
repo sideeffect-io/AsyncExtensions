@@ -80,28 +80,28 @@ public final class AsyncThrowingReplaySubject<Element, Failure: Error>: AsyncSub
   ) -> (iterator: AsyncThrowingBufferedChannel<Element, Error>.Iterator, unregister: @Sendable () -> Void) {
     let asyncBufferedChannel = AsyncThrowingBufferedChannel<Element, Error>()
 
-    let (terminalState, elements) = self.state.withCriticalRegion { state -> (Termination?, [Element]) in
-      (state.terminalState, state.buffer)
-    }
-
-    if let terminalState = terminalState {
-      switch terminalState {
-        case .finished:
-          asyncBufferedChannel.finish()
-        case .failure(let error):
-          asyncBufferedChannel.fail(error)
+    let consumerId = self.state.withCriticalRegion { state -> Int? in
+      if let terminalState = state.terminalState {
+        switch terminalState {
+          case .finished:
+            asyncBufferedChannel.finish()
+          case .failure(let error):
+            asyncBufferedChannel.fail(error)
+        }
+        return nil
       }
-      return (asyncBufferedChannel.makeAsyncIterator(), {})
-    }
 
-    for element in elements {
-      asyncBufferedChannel.send(element)
-    }
+      for element in state.buffer {
+        asyncBufferedChannel.send(element)
+      }
 
-    let consumerId = self.state.withCriticalRegion { state -> Int in
       state.ids += 1
       state.channels[state.ids] = asyncBufferedChannel
       return state.ids
+    }
+
+    guard let consumerId = consumerId else {
+      return (asyncBufferedChannel.makeAsyncIterator(), {})
     }
 
     let unregister = { @Sendable [state] in

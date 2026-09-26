@@ -75,19 +75,19 @@ public final class AsyncPassthroughSubject<Element: Sendable>: AsyncSubject {
   func handleNewConsumer() -> (iterator: AsyncBufferedChannel<Element>.Iterator, unregister: @Sendable () -> Void) {
     let asyncBufferedChannel = AsyncBufferedChannel<Element>()
 
-    let terminalState = self.state.withCriticalRegion { state in
-      state.terminalState
-    }
+    let consumerId = self.state.withCriticalRegion { state -> Int? in
+      if let terminalState = state.terminalState, terminalState.isFinished {
+        asyncBufferedChannel.finish()
+        return nil
+      }
 
-    if let terminalState = terminalState, terminalState.isFinished {
-      asyncBufferedChannel.finish()
-      return (asyncBufferedChannel.makeAsyncIterator(), {})
-    }
-
-    let consumerId = self.state.withCriticalRegion { state -> Int in
       state.ids += 1
       state.channels[state.ids] = asyncBufferedChannel
       return state.ids
+    }
+
+    guard let consumerId = consumerId else {
+      return (asyncBufferedChannel.makeAsyncIterator(), {})
     }
 
     let unregister = { @Sendable [state] in

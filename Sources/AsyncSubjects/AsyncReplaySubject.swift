@@ -75,23 +75,23 @@ public final class AsyncReplaySubject<Element>: AsyncSubject where Element: Send
   func handleNewConsumer() -> (iterator: AsyncBufferedChannel<Element>.Iterator, unregister: @Sendable () -> Void) {
     let asyncBufferedChannel = AsyncBufferedChannel<Element>()
 
-    let (terminalState, elements) = self.state.withCriticalRegion { state -> (Termination?, [Element]) in
-      (state.terminalState, state.buffer)
-    }
+    let consumerId = self.state.withCriticalRegion { state -> Int? in
+      if let terminalState = state.terminalState, terminalState.isFinished {
+        asyncBufferedChannel.finish()
+        return nil
+      }
 
-    if let terminalState = terminalState, terminalState.isFinished {
-      asyncBufferedChannel.finish()
-      return (asyncBufferedChannel.makeAsyncIterator(), {})
-    }
+      for element in state.buffer {
+        asyncBufferedChannel.send(element)
+      }
 
-    for element in elements {
-      asyncBufferedChannel.send(element)
-    }
-
-    let consumerId = self.state.withCriticalRegion { state -> Int in
       state.ids += 1
       state.channels[state.ids] = asyncBufferedChannel
       return state.ids
+    }
+
+    guard let consumerId = consumerId else {
+      return (asyncBufferedChannel.makeAsyncIterator(), {})
     }
 
     let unregister = { @Sendable [state] in
