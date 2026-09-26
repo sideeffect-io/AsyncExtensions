@@ -83,24 +83,24 @@ public final class AsyncThrowingPassthroughSubject<Element, Failure: Error>: Asy
   ) -> (iterator: AsyncThrowingBufferedChannel<Element, Error>.Iterator, unregister: @Sendable () -> Void) {
     let asyncBufferedChannel = AsyncThrowingBufferedChannel<Element, Error>()
 
-    let terminalState = self.state.withCriticalRegion { state in
-      state.terminalState
-    }
-
-    if let terminalState = terminalState {
-      switch terminalState {
-        case .finished:
-          asyncBufferedChannel.finish()
-        case .failure(let error):
-          asyncBufferedChannel.fail(error)
+    let consumerId = self.state.withCriticalRegion { state -> Int? in
+      if let terminalState = state.terminalState {
+        switch terminalState {
+          case .finished:
+            asyncBufferedChannel.finish()
+          case .failure(let error):
+            asyncBufferedChannel.fail(error)
+        }
+        return nil
       }
-      return (asyncBufferedChannel.makeAsyncIterator(), {})
-    }
 
-    let consumerId = self.state.withCriticalRegion { state -> Int in
       state.ids += 1
       state.channels[state.ids] = asyncBufferedChannel
       return state.ids
+    }
+
+    guard let consumerId = consumerId else {
+      return (asyncBufferedChannel.makeAsyncIterator(), {})
     }
 
     let unregister = { @Sendable [state] in
