@@ -40,6 +40,52 @@ private class SpyAsyncSequenceForNumberOfIterators<Element>: AsyncSequence {
 }
 
 final class AsyncMulticastSequenceTests: XCTestCase {
+  func test_concurrent_consumers_receive_all_elements_in_order_before_finish() async {
+    await assertConcurrentDelivery()
+  }
+
+  func test_concurrent_consumers_receive_all_elements_in_order_before_failure() async {
+    await assertConcurrentDelivery(failure: MockError(code: 1701))
+  }
+
+  private func assertConcurrentDelivery(failure: MockError? = nil) async {
+    let elements = Array(0..<100)
+
+    for _ in 0..<20 {
+      let upstream = AsyncThrowingStream<Int, Error> { continuation in
+        elements.forEach { continuation.yield($0) }
+        continuation.finish(throwing: failure)
+      }
+      let sut = upstream.multicast(AsyncThrowingPassthroughSubject<Int, Error>())
+      // Register every subscriber before allowing any of them to advance upstream.
+      let iterators = (0..<8).map { _ in sut.makeAsyncIterator() }
+      let finished = expectation(description: "All concurrent subscribers finish")
+      finished.expectedFulfillmentCount = iterators.count
+      sut.connect()
+
+      let consumers = iterators.map { iterator in
+        Task {
+          defer { finished.fulfill() }
+          var iterator = iterator
+          var received = [Int]()
+          do {
+            while let element = try await iterator.next() {
+              received.append(element)
+            }
+            XCTAssertNil(failure)
+          } catch {
+            XCTAssertNotNil(failure)
+            XCTAssertEqual(error as? MockError, failure)
+          }
+          XCTAssertEqual(received, elements)
+        }
+      }
+
+      await fulfillment(of: [finished], timeout: 5)
+      consumers.forEach { $0.cancel() }
+    }
+  }
+
   func test_multiple_loops_receive_elements_from_single_baseIterator() {
     let taskHaveIterators = expectation(description: "All tasks have their iterator")
     taskHaveIterators.expectedFulfillmentCount = 2
