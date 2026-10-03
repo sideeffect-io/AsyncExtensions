@@ -42,6 +42,7 @@ public final class AsyncCurrentValueSubject<Element>: AsyncSubject where Element
     var current: Element
     var channels: [Int: AsyncBufferedChannel<Element>]
     var ids: Int
+    var deliveries = SubjectDeliveryQueue()
   }
 
   let state: ManagedCriticalState<State>
@@ -67,27 +68,39 @@ public final class AsyncCurrentValueSubject<Element>: AsyncSubject where Element
   /// Sends a value to all consumers
   /// - Parameter element: the value to send
   public func send(_ element: Element) {
-    let channels = self.state.withCriticalRegion { state in
+    let shouldDrain = self.state.withCriticalRegion { state in
       state.current = element
-      return Array(state.channels.values)
+      let channels = Array(state.channels.values)
+      return state.deliveries.enqueue {
+        for channel in channels {
+          channel.send(element)
+        }
+      }
     }
-    // Resuming a consumer must not hold the lock used by its cancellation handler.
-    for channel in channels {
-      channel.send(element)
-    }
+    if shouldDrain { self.drainDeliveries() }
   }
 
   /// Finishes the async sequences with a normal ending.
   /// - Parameter termination: The termination to finish the subject.
   public func send(_ termination: Termination<Failure>) {
-    let channels = self.state.withCriticalRegion { state in
+    let shouldDrain = self.state.withCriticalRegion { state in
       state.terminalState = termination
       let channels = Array(state.channels.values)
       state.channels.removeAll()
-      return channels
+      return state.deliveries.enqueue {
+        for channel in channels {
+          channel.finish()
+        }
+      }
     }
-    for channel in channels {
-      channel.finish()
+    if shouldDrain { self.drainDeliveries() }
+  }
+
+  func drainDeliveries() {
+    while let delivery = self.state.withCriticalRegion({ $0.deliveries.next() }) {
+      // Continuation resumption must not hold a lock needed by cancellation,
+      // including a cancellation handler that sends back into this subject.
+      delivery()
     }
   }
 
