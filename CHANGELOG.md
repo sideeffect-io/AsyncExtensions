@@ -1,6 +1,7 @@
 **Unreleased:**
 
 - Subjects: fix a deadlock when sending values or termination concurrently with consumer cancellation (https://github.com/sideeffect-io/AsyncExtensions/issues/52).
+- Multicast: preserve upstream element order and prevent termination from overtaking values when consumers advance concurrently.
 
 **v0.5.2 - Oxygen:**
 
