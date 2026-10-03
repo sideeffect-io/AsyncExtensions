@@ -29,67 +29,6 @@ struct MergeStateMachine<Element>: Sendable {
   let state: ManagedCriticalState<State>
   let task: Task<Void, Never>
 
-  init<Base1: AsyncSequence, Base2: AsyncSequence>(
-    _ base1: Base1,
-    _ base2: Base2
-  ) where Base1.Element == Element, Base2.Element == Element {
-    self.state = ManagedCriticalState(State(buffer: .idle, basesToTerminate: 2))
-
-    let regulator1 = Regulator(base1, onNextRegulatedElement: { [state] in Self.onNextRegulatedElement($0, state: state) })
-    let regulator2 = Regulator(base2, onNextRegulatedElement: { [state] in Self.onNextRegulatedElement($0, state: state) })
-
-    self.requestNextRegulatedElements = {
-      regulator1.requestNextRegulatedElement()
-      regulator2.requestNextRegulatedElement()
-    }
-
-    self.task = Task {
-      await withTaskGroup(of: Void.self) { group in
-        group.addTask {
-          await regulator1.iterate()
-        }
-
-        group.addTask {
-          await regulator2.iterate()
-        }
-      }
-    }
-  }
-
-  init<Base1: AsyncSequence, Base2: AsyncSequence, Base3: AsyncSequence>(
-    _ base1: Base1,
-    _ base2: Base2,
-    _ base3: Base3
-  ) where Base1.Element == Element, Base2.Element == Element, Base3.Element == Base1.Element {
-    self.state = ManagedCriticalState(State(buffer: .idle, basesToTerminate: 3))
-
-    let regulator1 = Regulator(base1, onNextRegulatedElement: { [state] in Self.onNextRegulatedElement($0, state: state) })
-    let regulator2 = Regulator(base2, onNextRegulatedElement: { [state] in Self.onNextRegulatedElement($0, state: state) })
-    let regulator3 = Regulator(base3, onNextRegulatedElement: { [state] in Self.onNextRegulatedElement($0, state: state) })
-
-    self.requestNextRegulatedElements = {
-      regulator1.requestNextRegulatedElement()
-      regulator2.requestNextRegulatedElement()
-      regulator3.requestNextRegulatedElement()
-    }
-
-    self.task = Task {
-      await withTaskGroup(of: Void.self) { group in
-        group.addTask {
-          await regulator1.iterate()
-        }
-
-        group.addTask {
-          await regulator2.iterate()
-        }
-
-        group.addTask {
-          await regulator3.iterate()
-        }
-      }
-    }
-  }
-
   init<Base: AsyncSequence>(
     _ bases: [Base]
   ) where Base.Element == Element {

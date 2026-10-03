@@ -5,14 +5,6 @@
 //  Created by Thibault Wittemberg on 01/01/2022.
 //
 
-public extension Sequence {
-  /// Creates an AsyncSequence of the sequence elements.
-  /// - Returns: The AsyncSequence that outputs the elements from the sequence.
-  var async: AsyncLazySequence<Self> {
-    AsyncLazySequence(self)
-  }
-}
-
 /// `AsyncLazySequence` is an AsyncSequence that outputs elements from a traditional Sequence.
 /// If the parent task is cancelled while iterating then the iteration finishes.
 ///

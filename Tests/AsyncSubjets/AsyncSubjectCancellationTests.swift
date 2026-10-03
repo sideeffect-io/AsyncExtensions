@@ -1,4 +1,5 @@
 import Dispatch
+import AsyncAlgorithms
 @testable import AsyncExtensions
 import XCTest
 
