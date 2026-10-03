@@ -67,24 +67,27 @@ public final class AsyncCurrentValueSubject<Element>: AsyncSubject where Element
   /// Sends a value to all consumers
   /// - Parameter element: the value to send
   public func send(_ element: Element) {
-    self.state.withCriticalRegion { state in
+    let channels = self.state.withCriticalRegion { state in
       state.current = element
-      for channel in state.channels.values {
-        channel.send(element)
-      }
+      return Array(state.channels.values)
+    }
+    // Resuming a consumer must not hold the lock used by its cancellation handler.
+    for channel in channels {
+      channel.send(element)
     }
   }
 
   /// Finishes the async sequences with a normal ending.
   /// - Parameter termination: The termination to finish the subject.
   public func send(_ termination: Termination<Failure>) {
-    self.state.withCriticalRegion { state in
+    let channels = self.state.withCriticalRegion { state in
       state.terminalState = termination
       let channels = Array(state.channels.values)
       state.channels.removeAll()
-      for channel in channels {
-        channel.finish()
-      }
+      return channels
+    }
+    for channel in channels {
+      channel.finish()
     }
   }
 

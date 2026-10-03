@@ -53,28 +53,30 @@ public final class AsyncThrowingPassthroughSubject<Element, Failure: Error>: Asy
   /// Sends a value to all consumers
   /// - Parameter element: the value to send
   public func send(_ element: Element) {
-    self.state.withCriticalRegion { state in
-      for channel in state.channels.values {
-        channel.send(element)
-      }
+    let channels = self.state.withCriticalRegion { state in
+      return Array(state.channels.values)
+    }
+    // Resuming a consumer must not hold the lock used by its cancellation handler.
+    for channel in channels {
+      channel.send(element)
     }
   }
 
   /// Finishes the subject with either a normal ending or an error.
   /// - Parameter termination: The termination to finish the subject
   public func send(_ termination: Termination<Failure>) {
-    self.state.withCriticalRegion { state in
+    let channels = self.state.withCriticalRegion { state in
       state.terminalState = termination
       let channels = Array(state.channels.values)
       state.channels.removeAll()
-
-      for channel in channels {
-        switch termination {
-          case .finished:
-            channel.finish()
-          case .failure(let error):
-            channel.fail(error)
-        }
+      return channels
+    }
+    for channel in channels {
+      switch termination {
+        case .finished:
+          channel.finish()
+        case .failure(let error):
+          channel.fail(error)
       }
     }
   }

@@ -1,3 +1,7 @@
+**Unreleased:**
+
+- Subjects: fix a deadlock when sending values or termination concurrently with consumer cancellation (https://github.com/sideeffect-io/AsyncExtensions/issues/52).
+
 **v0.5.2 - Oxygen:**
 
 This version is a bug fix version.
