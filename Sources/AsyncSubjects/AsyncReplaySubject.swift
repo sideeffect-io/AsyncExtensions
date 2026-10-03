@@ -8,6 +8,7 @@
 /// An `AsyncReplaySubject` is an async sequence in which one can send values over time.
 /// Values are buffered in a FIFO fashion so they can be replayed by new consumers.
 /// When the `bufferSize` is outreached the oldest value is dropped.
+/// A buffer size of zero retains no history and still delivers values to existing consumers.
 /// When the `AsyncReplaySubject` is terminated, new consumers will
 /// immediately finish without replaying buffered values.
 /// The first termination is permanent; subsequent values and termination are ignored.
@@ -50,10 +51,12 @@ public final class AsyncReplaySubject<Element>: AsyncSubject where Element: Send
   public func send(_ element: Element) {
     let shouldDrain = self.state.withCriticalRegion { state in
       guard state.terminalState == nil else { return false }
-      if state.buffer.count >= state.bufferSize && !state.buffer.isEmpty {
-        state.buffer.removeFirst()
+      if state.bufferSize > 0 {
+        if state.buffer.count >= state.bufferSize {
+          state.buffer.removeFirst()
+        }
+        state.buffer.append(element)
       }
-      state.buffer.append(element)
       let channels = Array(state.channels.values)
       return state.deliveries.enqueue {
         for channel in channels {

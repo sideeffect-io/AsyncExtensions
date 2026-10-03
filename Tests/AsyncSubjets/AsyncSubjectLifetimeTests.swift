@@ -29,6 +29,11 @@ final class AsyncSubjectLifetimeTests: XCTestCase {
     assertSentValueReleased(subject, file: file, line: line)
   }
 
+  func test_zero_capacity_replay_subjects_do_not_retain_values_without_subscribers() {
+    assertSentValueReleased(AsyncReplaySubject<LifetimePayload>(bufferSize: 0))
+    assertSentValueReleased(AsyncThrowingReplaySubject<LifetimePayload, Error>(bufferSize: 0))
+  }
+
   private func assertSentValueReleased<S: AsyncSubject>(
     _ subject: S,
     file: StaticString = #filePath,

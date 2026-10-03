@@ -123,7 +123,8 @@ termination receive only that original finish or failure, without any current va
 
 Registration happens synchronously in `makeAsyncIterator()`. A passthrough iterator receives only
 values accepted after registration. A current-value or replay iterator receives the stored state
-at registration followed by subsequent sends. Replay capacity limits history for new subscribers;
+at registration followed by subsequent sends. Replay capacity zero retains no history and still
+delivers live values to registered consumers. Replay capacity limits history for new subscribers;
 existing subscribers have unbounded buffers if they consume more slowly than values are produced.
 
 A subscription unregisters when its consuming task is cancelled or its last iterator copy is released. This also removes abandoned consumer buffers after a loop exits early. An active loop still needs an owner: retain and cancel its `Task`, or call `subject.send(.finished)` when the producer ends. Dropping a task handle or capturing an owner weakly does not stop an active loop.
@@ -144,6 +145,7 @@ Every change to subjects must pass the complete subject regression set and the f
 | Shared concurrent order and current-value/replay consistency | [AsyncSubjectConcurrentSendOrderingTests](./Tests/AsyncSubjets/AsyncSubjectConcurrentSendOrderingTests.swift) |
 | Queued sends return, accepted values precede termination, and later sends cannot replace it | [AsyncSubjectQueuedDeliveryTests](./Tests/AsyncSubjets/AsyncSubjectQueuedDeliveryTests.swift) |
 | First termination is permanent, including races, and current value freezes | [AsyncSubjectTerminationTests](./Tests/AsyncSubjets/AsyncSubjectTerminationTests.swift) |
+| Zero capacity delivers live values without historical replay | [AsyncReplaySubjectTests](./Tests/AsyncSubjets/AsyncReplaySubjectTests.swift) and [AsyncThrowingReplaySubjectTests](./Tests/AsyncSubjets/AsyncThrowingReplaySubjectTests.swift) |
 | Abandoned subscriptions and ignored values release their storage | [AsyncSubjectLifetimeTests](./Tests/AsyncSubjets/AsyncSubjectLifetimeTests.swift) |
 
 ### Combiners
