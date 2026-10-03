@@ -1,6 +1,7 @@
 **Unreleased:**
 
 - Subjects: fix a deadlock when sending values or termination concurrently with consumer cancellation (https://github.com/sideeffect-io/AsyncExtensions/issues/52).
+- Subjects: preserve delivery order for concurrent sends while keeping consumer resumption outside the state lock (https://github.com/sideeffect-io/AsyncExtensions/issues/61).
 - Multicast: preserve upstream element order and prevent termination from overtaking values when consumers advance concurrently.
 
 **v0.5.2 - Oxygen:**

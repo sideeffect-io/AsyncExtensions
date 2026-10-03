@@ -35,6 +35,7 @@ public final class AsyncThrowingReplaySubject<Element, Failure: Error>: AsyncSub
   }
 
   let state: ManagedCriticalState<State>
+  let delivery = OrderedDelivery()
 
   public init(bufferSize: UInt) {
     self.state = ManagedCriticalState(
@@ -45,38 +46,40 @@ public final class AsyncThrowingReplaySubject<Element, Failure: Error>: AsyncSub
   /// Sends a value to all consumers
   /// - Parameter element: the value to send
   public func send(_ element: Element) {
-    let channels = self.state.withCriticalRegion { state in
+    let shouldDrain = self.state.withCriticalRegion { state in
       if state.buffer.count >= state.bufferSize && !state.buffer.isEmpty {
         state.buffer.removeFirst()
       }
       state.buffer.append(element)
-      return Array(state.channels.values)
+      let channels = Array(state.channels.values)
+      return self.delivery.enqueue {
+        for channel in channels {
+          channel.send(element)
+        }
+      }
     }
-    // Resuming a consumer must not hold the lock used by its cancellation handler.
-    for channel in channels {
-      channel.send(element)
-    }
+    if shouldDrain { self.delivery.drain() }
   }
 
   /// Finishes the subject with either a normal ending or an error.
   /// - Parameter termination: The termination to finish the subject
   public func send(_ termination: Termination<Failure>) {
-    let channels = self.state.withCriticalRegion { state in
+    let shouldDrain = self.state.withCriticalRegion { state in
       state.terminalState = termination
       let channels = Array(state.channels.values)
       state.channels.removeAll()
       state.buffer.removeAll()
       state.bufferSize = 0
-      return channels
-    }
-    for channel in channels {
-      switch termination {
-        case .finished:
-          channel.finish()
-        case .failure(let error):
-          channel.fail(error)
+      return self.delivery.enqueue {
+        switch termination {
+          case .finished:
+            for channel in channels { channel.finish() }
+          case .failure(let error):
+            for channel in channels { channel.fail(error) }
+        }
       }
     }
+    if shouldDrain { self.delivery.drain() }
   }
 
   func handleNewConsumer(
