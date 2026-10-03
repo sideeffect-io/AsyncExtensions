@@ -43,6 +43,17 @@ AsyncStream)
 * [AsyncReplaySubject](./Sources/AsyncSubjects/AsyncReplaySubject.swift): Subject with a shared output. Maintains and replays a buffered amount of values
 * [AsyncThrowingReplaySubject](./Sources/AsyncSubjects/AsyncThrowingReplaySubject.swift): Throwing subject with a shared output. Maintains and replays a buffered amount of values
 
+Subjects serialize concurrent sends in the order their state lock is acquired. Which producer
+goes first is unspecified, but consumers registered for the same sends receive the same order,
+and termination follows previously accepted values. Current-value and replay state use that
+same order, so consumers that remain subscribed catch up to the stored state.
+
+State updates and subscriber registration are synchronous. Delivery runs outside the state lock
+to allow cancellation handlers to send back into the subject. If another sender is already
+delivering, `send` queues its delivery and returns; it does not wait for consumers to receive
+the value. The active sender drains pending deliveries before returning. A new current-value
+or replay consumer receives the latest stored state, followed by subsequent sends.
+
 ### Combiners
 * [`zip(_:_:)`](./Sources/Combiners/Zip/AsyncZip2Sequence.swift): Zips two `AsyncSequence` into an AsyncSequence of tuple of elements
 * [`zip(_:_:_:)`](./Sources/Combiners/Zip/AsyncZip3Sequence.swift): Zips three `AsyncSequence` into an AsyncSequence of tuple of elements
