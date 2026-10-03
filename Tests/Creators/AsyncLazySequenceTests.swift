@@ -23,7 +23,7 @@ final class AsyncLazySequenceTests: XCTestCase {
     XCTAssertEqual(receivedResult, sequence)
   }
 
-  func test_AsyncLazySequence_returns_an_asyncSequence_that_finishes_when_task_is_cancelled() {
+  func test_AsyncLazySequence_returns_an_asyncSequence_that_finishes_when_task_is_cancelled() async {
     let canCancelExpectation = expectation(description: "The first element has been emitted")
     let hasCancelExceptation = expectation(description: "The task has been cancelled")
 
@@ -41,10 +41,12 @@ final class AsyncLazySequenceTests: XCTestCase {
       XCTAssertEqual(firstElement!, 0) // the AsyncSequence is cancelled having only emitted the first element
     }
 
-    wait(for: [canCancelExpectation], timeout: 5) // one element has been emitted, we can cancel the task
+    await fulfillment(of: [canCancelExpectation], timeout: 5) // one element has been emitted, we can cancel the task
 
     task.cancel()
 
     hasCancelExceptation.fulfill() // we can release the lock in the for loop
+
+    await task.value
   }
 }
