@@ -28,6 +28,10 @@ public struct AnyAsyncSequence<Element>: AsyncSequence {
   }
 }
 
+/// An `AnyAsyncSequence` holds nothing but a `@Sendable` closure, and the base it erases is
+/// itself `Sendable`, so it is safe to send when its elements are.
+extension AnyAsyncSequence: @unchecked Sendable where Element: Sendable {}
+
 public struct AnyAsyncIterator<Element>: AsyncIteratorProtocol {
   public typealias Element = Element
 
