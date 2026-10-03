@@ -9,7 +9,7 @@
 
 **AsyncExtensions** provides a collection of operators that intends to ease the creation and combination of `AsyncSequences`.
 
-**AsyncExtensions** can be seen as a companion to Apple [swift-async-algorithms](https://github.com/apple/swift-async-algorithms), which provides operators that the community needs and are not provided by Apple.
+**AsyncExtensions** complements Apple [swift-async-algorithms](https://github.com/apple/swift-async-algorithms) with subjects, buffered channels, and operators that Apple does not provide.
 
 ## Adding AsyncExtensions as a Dependency
 
@@ -27,6 +27,44 @@ Include `"AsyncExtensions"` as a dependency for your executable target:
 ```
 
 Finally, add `import AsyncExtensions` to your source code.
+
+## Using Swift Async Algorithms alongside AsyncExtensions
+
+SwiftPM requires Swift 5.8 or later. To use both libraries, declare both package dependencies and add the `AsyncAlgorithms` product to your target alongside `AsyncExtensions`:
+
+```swift
+.package(url: "https://github.com/apple/swift-async-algorithms.git", from: "1.0.0"),
+```
+
+```swift
+.target(
+    name: "<target>",
+    dependencies: [
+        "AsyncExtensions",
+        .product(name: "AsyncAlgorithms", package: "swift-async-algorithms")
+    ]
+),
+```
+
+Import both modules in each source file that uses them:
+
+```swift
+import AsyncAlgorithms
+import AsyncExtensions
+
+let values = [1, 2, 3].async
+let pairs = zip(values, ["a", "b", "c"].async)
+let merged = merge(values, [4, 5, 6].async)
+let rows = zip(values, values, values, values)
+```
+
+`Sequence.async`, two- and three-input `zip`/`merge`, and their corresponding sequence types now come from `AsyncAlgorithms`. This is a breaking API change: add that dependency and import when migrating these calls.
+
+AsyncExtensions retains variadic `zip` and `merge`, including support for four or more inputs. Use `AsyncExtensions.zip(...)` or `AsyncExtensions.merge(...)` explicitly when you want the variadic implementations with two or three inputs; variadic `zip` produces arrays, while Apple's fixed overloads produce tuples.
+
+Variadic inputs share one concrete sequence type. Use `eraseToAnyAsyncSequence()` when combining different sequence types through these variadic operators.
+
+The `AsyncLazySequence(sequence)` constructor remains available when you only need AsyncExtensions. The `.async` extension is supplied exclusively by AsyncAlgorithms.
 
 ## Features
 
@@ -55,6 +93,8 @@ the value. The active sender drains pending deliveries before returning. A new c
 or replay consumer receives the latest stored state, followed by subsequent sends.
 
 ### Combiners
+* [`zip(_:)`](./Sources/Combiners/Zip/AsyncZipSequence.swift): Zips any number of async sequences into arrays of elements
+* [`merge(_:)`](./Sources/Combiners/Merge/AsyncMergeSequence.swift): Merges any number of async sequences into one sequence
 * [`withLatest(_:)`](./Sources/Combiners/WithLatestFrom/AsyncWithLatestFromSequence.swift): Combines elements from self with the last known element from an other `AsyncSequence`
 * [`withLatest(_:_:)`](./Sources/Combiners/WithLatestFrom/AsyncWithLatestFrom2Sequence.swift): Combines elements from self with the last known elements from two other async sequences
 
@@ -63,6 +103,7 @@ or replay consumer receives the latest stored state, followed by subsequent send
 * [AsyncFailSequence](./Sources/Creators/AsyncFailSequence.swift): Creates an `AsyncSequence` that immediately fails
 * [AsyncJustSequence](./Sources/Creators/AsyncJustSequence.swift): Creates an `AsyncSequence` that emits an element an finishes
 * [AsyncThrowingJustSequence](./Sources/Creators/AsyncThrowingJustSequence.swift): Creates an `AsyncSequence` that emits an elements and finishes bases on a throwing closure
+* [AsyncLazySequence](./Sources/Creators/AsyncLazySequence.swift): Creates an async sequence from an explicit synchronous sequence
 * [AsyncTimerSequence](./Sources/Creators/AsyncTimerSequence.swift): Creates an `AsyncSequence` that emits a date value periodically
 * [AsyncStream Pipe](./Sources/Creators/AsyncStream+Pipe.swift): Creates an AsyncStream and returns a tuple standing for its inputs and outputs
 

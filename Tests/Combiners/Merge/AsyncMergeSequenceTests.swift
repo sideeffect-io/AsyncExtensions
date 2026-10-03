@@ -5,6 +5,7 @@
 //  Created by Thibault Wittemberg on 01/01/2022.
 //
 
+import AsyncAlgorithms
 import AsyncExtensions
 import XCTest
 
@@ -81,7 +82,7 @@ final class AsyncMergeSequenceTests: XCTestCase {
     let asyncSequence1 = TimedAsyncSequence(intervalInMills: [0, 1000, 1000], sequence: ["a", "b", "c"])
     let asyncSequence2 = TimedAsyncSequence(intervalInMills: [500, 1000], sequence: ["d", "e"])
 
-    let sut = merge(asyncSequence1, asyncSequence2)
+    let sut = AsyncExtensions.merge(asyncSequence1, asyncSequence2)
 
     var receivedElements = [String]()
     var iterator = sut.makeAsyncIterator()
@@ -104,7 +105,7 @@ final class AsyncMergeSequenceTests: XCTestCase {
 
     let expectedElements = asyncSequence1 + asyncSequence2 + asyncSequence3 + asyncSequence4
 
-    let sut = merge(asyncSequence1.async, asyncSequence2.async, asyncSequence3.async, asyncSequence4.async)
+    let sut = AsyncExtensions.merge(asyncSequence1.async, asyncSequence2.async, asyncSequence3.async, asyncSequence4.async)
 
     var receivedElements = [Int]()
     var iterator = sut.makeAsyncIterator()
@@ -132,32 +133,40 @@ final class AsyncMergeSequenceTests: XCTestCase {
     let stream2 = AsyncPassthroughSubject<Int>()
     let stream3 = AsyncPassthroughSubject<Int>()
 
-    let sut = merge(stream1, stream2, stream3)
+    let sut = AsyncExtensions.merge(
+      stream1.eraseToAnyAsyncSequence(),
+      stream2.eraseToAnyAsyncSequence(),
+      stream3.eraseToAnyAsyncSequence()
+    )
 
     Task {
       var receivedElements = [Int]()
 
-      for await element in sut {
-        receivedElements.append(element)
-        if element == 1 {
-          canSend2Expectation.fulfill()
-        }
-        if element == 2 {
-          canSend3Expectation.fulfill()
-        }
-        if element == 3 {
-          canSend4Expectation.fulfill()
-        }
-        if element == 4 {
-          canSend5Expectation.fulfill()
-        }
-        if element == 5 {
-          canSend6Expectation.fulfill()
-        }
+      do {
+        for try await element in sut {
+          receivedElements.append(element)
+          if element == 1 {
+            canSend2Expectation.fulfill()
+          }
+          if element == 2 {
+            canSend3Expectation.fulfill()
+          }
+          if element == 3 {
+            canSend4Expectation.fulfill()
+          }
+          if element == 4 {
+            canSend5Expectation.fulfill()
+          }
+          if element == 5 {
+            canSend6Expectation.fulfill()
+          }
 
-        if element == 6 {
-          canSendFinishExpectation.fulfill()
+          if element == 6 {
+            canSendFinishExpectation.fulfill()
+          }
         }
+      } catch {
+        XCTFail("The merged streams should not fail: \(error)")
       }
       XCTAssertEqual(receivedElements, [1, 2, 3, 4, 5, 6])
       mergedSequenceIsFinisedExpectation.fulfill()
@@ -195,7 +204,7 @@ final class AsyncMergeSequenceTests: XCTestCase {
     let asyncSequence2 = AsyncEmptySequence<Int>()
     let asyncSequence3 = AsyncEmptySequence<Int>()
 
-    let sut = merge(asyncSequence1, asyncSequence2, asyncSequence3)
+    let sut = AsyncExtensions.merge(asyncSequence1, asyncSequence2, asyncSequence3)
 
     for await element in sut {
       receivedResult.append(element)
@@ -204,16 +213,16 @@ final class AsyncMergeSequenceTests: XCTestCase {
     XCTAssertTrue(receivedResult.isEmpty)
   }
 
-  func testMerge_returns_original_sequence_when_one_sequence_is_empty() async {
+  func testMerge_returns_original_sequence_when_one_sequence_is_empty() async throws {
     let expectedResult = [1, 2, 3]
     var receivedResult = [Int]()
 
     let asyncSequence1 = expectedResult.async
     let asyncSequence2 = AsyncEmptySequence<Int>()
 
-    let sut = merge(asyncSequence1, asyncSequence2)
+    let sut = AsyncExtensions.merge(asyncSequence1.eraseToAnyAsyncSequence(), asyncSequence2.eraseToAnyAsyncSequence())
 
-    for await element in sut {
+    for try await element in sut {
       receivedResult.append(element)
     }
 
@@ -228,7 +237,7 @@ final class AsyncMergeSequenceTests: XCTestCase {
     let stream1 = AsyncThrowingCurrentValueSubject<Int, Error>(1)
     let stream2 = AsyncPassthroughSubject<Int>()
 
-    let sut = merge(stream1, stream2)
+    let sut = AsyncExtensions.merge(stream1.eraseToAnyAsyncSequence(), stream2.eraseToAnyAsyncSequence())
 
     Task {
       var receivedElements = [Int]()
@@ -267,7 +276,7 @@ final class AsyncMergeSequenceTests: XCTestCase {
     let asyncSequence2 = TimedAsyncSequence(intervalInMills: [50, 100, 100, 100], sequence: [6, 7, 8, 9])
     let asyncSequence3 = TimedAsyncSequence(intervalInMills: [1, 399], sequence: [10, 11])
 
-    let sut = merge(asyncSequence1, asyncSequence2, asyncSequence3)
+    let sut = AsyncExtensions.merge(asyncSequence1, asyncSequence2, asyncSequence3)
 
     let task = Task {
       var firstElement: Int?
@@ -297,12 +306,12 @@ final class AsyncMergeSequenceTests: XCTestCase {
     let asyncSequence1 = AsyncCurrentValueSubject<Int>(1)
     let asyncSequence2 = AsyncPassthroughSubject<Int>()
 
-    let sut = merge(asyncSequence1, asyncSequence2)
+    let sut = AsyncExtensions.merge(asyncSequence1.eraseToAnyAsyncSequence(), asyncSequence2.eraseToAnyAsyncSequence())
 
     let task = Task {
       var iterator = sut.makeAsyncIterator()
       canIterateExpectation.fulfill()
-      while let _ = await iterator.next() {
+      while let _ = try await iterator.next() {
         firstElementHasBeenReceivedExpectation.fulfill()
       }
       hasCancelExceptation.fulfill()
@@ -345,7 +354,7 @@ final class AsyncMergeSequenceTests: XCTestCase {
     )
     let failingBase = TimedAsyncSequence(intervalInMills: [0, 0], sequence: [1, 2], indexOfError: 1)
 
-    let sut = merge(failingBase, blockingBase)
+    let sut = AsyncExtensions.merge(failingBase.eraseToAnyAsyncSequence(), blockingBase.eraseToAnyAsyncSequence())
     var iterator = sut.makeAsyncIterator()
 
     do {
