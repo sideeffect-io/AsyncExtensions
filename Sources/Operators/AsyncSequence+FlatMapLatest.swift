@@ -74,9 +74,21 @@ public extension AsyncSequence {
   ///
   /// - note: This operator is a combination of `map` and `switchToLatest`.
   /// - Returns: An async sequence emitting the value of the latest inner async sequence.
+  // A sequence-returning transform should use the flattening overload rather than emit a sequence.
+  @_disfavoredOverload
   func flatMapLatest<Output>(
     _ transform: @Sendable @escaping (Element) async throws -> Output
   ) -> AsyncSwitchToLatestSequence<AsyncThrowingMapSequence<Self, AsyncThrowingJustSequence<Output>>> where Element: Sendable {
     self.map { element in AsyncThrowingJustSequence { try await transform(element) } }.switchToLatest()
+  }
+
+  /// Transforms each element asynchronously, cancelling the previous transformation when a new
+  /// element arrives. A nonthrowing upstream and transformation can be iterated without `try`.
+  /// Returning a `Result.failure` is an ordinary value and does not terminate the sequence.
+  @_disfavoredOverload
+  func flatMapLatest<Output>(
+    _ transform: @Sendable @escaping (Element) async -> Output
+  ) -> AsyncSwitchToLatestSequence<AsyncMapSequence<Self, AsyncJustSequence<Output>>> where Element: Sendable {
+    self.map { element in AsyncJustSequence<Output> { await transform(element) } }.switchToLatest()
   }
 }
