@@ -128,13 +128,14 @@ where Base.Element == Subject.Element, Subject.Failure == Error, Base.AsyncItera
       }
 
       self.state.withCriticalRegion { state in
+        // Broadcast before another consumer can advance upstream, including its termination.
+        // This lock belongs to multicast and is not acquired by subject cancellation handlers.
+        switch toSend {
+          case .success(.some(let element)): self.subject.send(element)
+          case .success(.none): self.subject.send(.finished)
+          case .failure(let error): self.subject.send(.failure(error))
+        }
         state = .available(iterator)
-      }
-
-      switch toSend {
-        case .success(.some(let element)): self.subject.send(element)
-        case .success(.none): self.subject.send(.finished)
-        case .failure(let error): self.subject.send(.failure(error))
       }
     }.value
   }
