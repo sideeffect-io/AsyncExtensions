@@ -121,10 +121,12 @@ public final class AsyncPassthroughSubject<Element: Sendable>: AsyncSubject {
 
   public struct Iterator: AsyncSubjectIterator {
     var iterator: AsyncBufferedChannel<Element>.Iterator
-    let unregister: @Sendable () -> Void
+    let subscription: SubjectSubscription
 
     init(asyncSubject: AsyncPassthroughSubject) {
-      (self.iterator, self.unregister) = asyncSubject.handleNewConsumer()
+      let consumer = asyncSubject.handleNewConsumer()
+      self.iterator = consumer.iterator
+      self.subscription = SubjectSubscription(unregister: consumer.unregister)
     }
 
     public var hasBufferedElements: Bool {
@@ -134,8 +136,8 @@ public final class AsyncPassthroughSubject<Element: Sendable>: AsyncSubject {
     public mutating func next() async -> Element? {
       await withTaskCancellationHandler {
         await self.iterator.next()
-      } onCancel: { [unregister] in
-        unregister()
+      } onCancel: { [subscription] in
+        subscription.unregister()
       }
     }
   }

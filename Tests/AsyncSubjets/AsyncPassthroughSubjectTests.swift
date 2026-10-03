@@ -9,7 +9,7 @@
 import XCTest
 
 final class AsyncPassthroughSubjectTests: XCTestCase {
-  func test_send_pushes_elements_in_the_subject() {
+  func test_send_pushes_elements_in_the_subject() async {
     let isReadyToBeIteratedExpectation = expectation(description: "Passthrough subject iterators are ready for iteration")
     isReadyToBeIteratedExpectation.expectedFulfillmentCount = 2
 
@@ -20,7 +20,7 @@ final class AsyncPassthroughSubjectTests: XCTestCase {
 
     let sut = AsyncPassthroughSubject<Int>()
 
-    Task {
+    let firstConsumer = Task {
       var receivedElements = [Int]()
 
       var it = sut.makeAsyncIterator()
@@ -34,7 +34,7 @@ final class AsyncPassthroughSubjectTests: XCTestCase {
       }
     }
 
-    Task {
+    let secondConsumer = Task {
       var receivedElements = [Int]()
 
       var it = sut.makeAsyncIterator()
@@ -48,13 +48,17 @@ final class AsyncPassthroughSubjectTests: XCTestCase {
       }
     }
 
-    wait(for: [isReadyToBeIteratedExpectation], timeout: 1)
+    await fulfillment(of: [isReadyToBeIteratedExpectation], timeout: 1)
 
     sut.send(1)
     sut.send(2)
     sut.send(3)
 
-    wait(for: [hasReceivedSentElementsExpectation], timeout: 1)
+    await fulfillment(of: [hasReceivedSentElementsExpectation], timeout: 1)
+    sut.send(.finished)
+    await firstConsumer.value
+    await secondConsumer.value
+
   }
 
   func test_sendFinished_ends_the_subject_and_immediately_resumes_futur_consumer() async {

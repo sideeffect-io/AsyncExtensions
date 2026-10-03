@@ -135,10 +135,12 @@ public final class AsyncThrowingReplaySubject<Element, Failure: Error>: AsyncSub
 
   public struct Iterator: AsyncSubjectIterator {
     var iterator: AsyncThrowingBufferedChannel<Element, Error>.Iterator
-    let unregister: @Sendable () -> Void
+    let subscription: SubjectSubscription
 
     init(asyncSubject: AsyncThrowingReplaySubject) {
-      (self.iterator, self.unregister) = asyncSubject.handleNewConsumer()
+      let consumer = asyncSubject.handleNewConsumer()
+      self.iterator = consumer.iterator
+      self.subscription = SubjectSubscription(unregister: consumer.unregister)
     }
 
     public var hasBufferedElements: Bool {
@@ -148,8 +150,8 @@ public final class AsyncThrowingReplaySubject<Element, Failure: Error>: AsyncSub
     public mutating func next() async throws -> Element? {
       try await withTaskCancellationHandler {
         try await self.iterator.next()
-      } onCancel: { [unregister] in
-        unregister()
+      } onCancel: { [subscription] in
+        subscription.unregister()
       }
     }
   }
