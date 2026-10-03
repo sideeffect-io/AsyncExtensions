@@ -1,7 +1,6 @@
 **Unreleased:**
 
 - Just: release consumed values from iterators so nested `flatMapLatest` subscriptions do not retain removed feature objects (https://github.com/sideeffect-io/AsyncExtensions/issues/35).
-- Subjects: unregister consumers when their last iterator copy is released, and finish and await test consumers to remove the reproduced channel/task leaks (https://github.com/sideeffect-io/AsyncExtensions/issues/43).
 
 - Breaking: use Swift Async Algorithms for `Sequence.async` and two- or three-input `zip`/`merge`, removing import ambiguities. Add the `AsyncAlgorithms` product dependency and import when migrating these APIs. Preserve variadic `zip`/`merge` and the explicit `AsyncLazySequence` constructor.
 - Breaking: rename the buffered Date timer from `AsyncTimerSequence` to `AsyncBufferedTimerSequence` to avoid ambiguity with Apple's clock-based timer.
@@ -10,6 +9,7 @@
 - SwitchToLatest: finish cancelled collection while the latest channel or outer sequence remains open, and discard late producer results (https://github.com/sideeffect-io/AsyncExtensions/issues/53).
 - Subjects: fix a deadlock when sending values or termination concurrently with consumer cancellation (https://github.com/sideeffect-io/AsyncExtensions/issues/52).
 - Subjects: preserve a shared order for concurrent sends, keep current-value/replay delivery consistent with stored state, and queue termination after accepted values without locking during delivery (https://github.com/sideeffect-io/AsyncExtensions/issues/61). Concurrent sends may return while another sender drains their queued delivery.
+- Subjects: unregister consumers when their last iterator copy is released, and finish and await test consumers to remove the reproduced channel/task leaks (https://github.com/sideeffect-io/AsyncExtensions/issues/43).
 - Multicast: preserve upstream element order and prevent termination from overtaking values when consumers advance concurrently.
 - Multicast: let cancelled subscribers finish while upstream is suspended, and document reusing one multicast/share instance to avoid overlapping upstream iterators (https://github.com/sideeffect-io/AsyncExtensions/issues/31).
 
