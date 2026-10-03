@@ -10,6 +10,8 @@ public extension AsyncSequence {
   /// to only produce a single `AsyncIterator`.
   /// This is useful when upstream async sequences are doing expensive work you don’t want to duplicate,
   /// like performing network requests.
+  /// Create this sequence once and return the same instance to every consumer. Repeated calls to
+  /// `multicast` create separate upstream iterators, even when they use the same subject.
   ///
   /// The following example uses an async sequence as a counter to emit three random numbers.
   /// It uses a ``AsyncSequence/multicast(_:)`` operator with a ``AsyncThrowingPassthroughSubject`
@@ -105,20 +107,22 @@ where Base.Element == Subject.Element, Subject.Failure == Error, Base.AsyncItera
     self.connectedGate.send(())
   }
 
-  func next() async {
-    await Task {
-      let (canAccessBase, iterator) = self.state.withCriticalRegion { state -> (Bool, Base.AsyncIterator?) in
-        switch state {
-          case .available(let iterator):
-            state = .busy
-            return (true, iterator)
-          case .busy:
-            return (false, nil)
-        }
+  func requestNext() {
+    let iterator = self.state.withCriticalRegion { state -> Base.AsyncIterator? in
+      switch state {
+        case .available(let iterator):
+          state = .busy
+          return iterator
+        case .busy:
+          return nil
       }
+    }
 
-      guard canAccessBase, var iterator = iterator else { return }
+    guard var iterator = iterator else { return }
 
+    // This pull belongs to the shared sequence. A subscriber waits on its own subject channel
+    // so cancelling that subscriber can finish immediately without cancelling upstream.
+    Task {
       let toSend: Result<Element?, Error>
       do {
         let element = try await iterator.next()
@@ -137,7 +141,7 @@ where Base.Element == Subject.Element, Subject.Failure == Error, Base.AsyncItera
         }
         state = .available(iterator)
       }
-    }.value
+    }
   }
 
   public func makeAsyncIterator() -> AsyncIterator {
@@ -163,9 +167,10 @@ where Base.Element == Subject.Element, Subject.Failure == Error, Base.AsyncItera
       if !isConnected {
         await self.connectedGateIterator.next()
       }
+      guard !Task.isCancelled else { return nil }
 
       if !self.subjectIterator.hasBufferedElements {
-        await self.asyncMulticastSequence.next()
+        self.asyncMulticastSequence.requestNext()
       }
 
       let element = try await self.subjectIterator.next()

@@ -68,6 +68,34 @@ The `AsyncLazySequence(sequence)` constructor remains available when you only ne
 
 Rename uses of AsyncExtensions' `AsyncTimerSequence` to `AsyncBufferedTimerSequence`. It retains the buffered `Date` values and `DispatchTimeInterval` initializer. The unqualified `AsyncTimerSequence` name now refers to Apple's clock-based timer when both modules are imported.
 
+## Sharing one upstream iterator
+
+Create `multicast` or `share` once, keep the returned instance, and return that same instance to every consumer. Calling either operator each time a consumer subscribes creates a new upstream iterator. An `AsyncThrowingStream` cannot have overlapping `next()` calls, so separate wrappers over the same stream can crash even if they use the same subject.
+
+For example, the connection in issue [#31](https://github.com/sideeffect-io/AsyncExtensions/issues/31) can store its shared sequence during initialization:
+
+```swift
+actor Connection {
+  private let continuation: AsyncThrowingStream<Int, Error>.Continuation
+  private let shared: AsyncShareSequence<AsyncThrowingStream<Int, Error>>
+
+  init() {
+    let (continuation, stream) = AsyncThrowingStream<Int, Error>.pipe()
+    self.continuation = continuation
+    self.shared = stream.share()
+  }
+
+  func events() -> AsyncShareSequence<AsyncThrowingStream<Int, Error>> {
+    shared
+  }
+
+  func send(_ value: Int) { continuation.yield(value) }
+  func finish() { continuation.finish() }
+}
+```
+
+Cancelling a subscriber finishes its iteration without cancelling the shared upstream. The connection still owns upstream termination and must finish or cancel its producer when the connection ends.
+
 ## Features
 
 ### Channels
