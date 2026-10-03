@@ -8,17 +8,21 @@
 /// An `AsyncThrowingReplaySubject` is an async sequence in which one can send values over time.
 /// Values are buffered in a FIFO fashion so they can be replayed by new consumers.
 /// When the `bufferSize` is outreached the oldest value is dropped.
+/// A buffer size of zero retains no history and still delivers values to existing consumers.
 /// When the `AsyncThrowingReplaySubject` is terminated, new consumers will
 /// immediately resume with this termination, whether it is a finish or a failure.
+/// Buffered values are not replayed after termination.
+/// The first termination is permanent; subsequent values and termination are ignored.
 ///
 /// ```
 /// let replay = AsyncThrowingReplaySubject<Int, Error>(bufferSize: 3)
 ///
 /// for i in (1...5) { replay.send(i) }
-/// replay.senf(.failure(error))
+/// replay.send(.failure(error))
 ///
+/// // Iteration throws immediately; the buffered values are not replayed.
 /// for try await element in replay {
-///   print(element) // will print 3, 4, 5 and throw
+///   print(element)
 /// }
 /// ```
 public final class AsyncThrowingReplaySubject<Element, Failure: Error>: AsyncSubject where Element: Sendable {
@@ -47,10 +51,13 @@ public final class AsyncThrowingReplaySubject<Element, Failure: Error>: AsyncSub
   /// - Parameter element: the value to send
   public func send(_ element: Element) {
     let shouldDrain = self.state.withCriticalRegion { state in
-      if state.buffer.count >= state.bufferSize && !state.buffer.isEmpty {
-        state.buffer.removeFirst()
+      guard state.terminalState == nil else { return false }
+      if state.bufferSize > 0 {
+        if state.buffer.count >= state.bufferSize {
+          state.buffer.removeFirst()
+        }
+        state.buffer.append(element)
       }
-      state.buffer.append(element)
       let channels = Array(state.channels.values)
       return state.deliveries.enqueue {
         for channel in channels {
@@ -65,6 +72,7 @@ public final class AsyncThrowingReplaySubject<Element, Failure: Error>: AsyncSub
   /// - Parameter termination: The termination to finish the subject
   public func send(_ termination: Termination<Failure>) {
     let shouldDrain = self.state.withCriticalRegion { state in
+      guard state.terminalState == nil else { return false }
       state.terminalState = termination
       let channels = Array(state.channels.values)
       state.channels.removeAll()

@@ -9,6 +9,23 @@
 import XCTest
 
 final class AsyncReplaySubjectTests: XCTestCase {
+  func test_zero_capacity_does_not_replay_history_but_delivers_live_values() async {
+    let subject = AsyncReplaySubject<Int>(bufferSize: 0)
+    let existing = subject.makeAsyncIterator()
+    subject.send(1)
+    subject.send(2)
+    let late = subject.makeAsyncIterator()
+    subject.send(3)
+    subject.send(.finished)
+
+    let existingResult = await drainBufferedElements(of: existing)
+    let lateResult = await drainBufferedElements(of: late)
+    XCTAssertEqual(existingResult.elements, [1, 2, 3])
+    XCTAssertEqual(lateResult.elements, [3])
+    XCTAssertTrue(existingResult.isTerminated)
+    XCTAssertTrue(lateResult.isTerminated)
+  }
+
   func test_send_replays_buffered_elements() async {
     let exp = expectation(description: "Send has stacked elements in the replay the buffer")
     exp.expectedFulfillmentCount = 2

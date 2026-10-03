@@ -110,6 +110,9 @@ final class AsyncSubjectQueuedDeliveryTests: XCTestCase {
     subject.send(2)
     let late = subject.makeAsyncIterator()
     subject.send(termination)
+    // Rejected sends must neither replace termination nor discard earlier queued values.
+    subject.send(3)
+    subject.send(.finished)
     let afterTermination = subject.makeAsyncIterator()
     XCTAssertFalse(first.hasBufferedElements, file: file, line: line)
     XCTAssertFalse(second.hasBufferedElements, file: file, line: line)
