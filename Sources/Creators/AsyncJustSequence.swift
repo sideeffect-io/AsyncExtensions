@@ -29,23 +29,17 @@ public struct AsyncJustSequence<Element>: AsyncSequence {
   }
 
   public struct Iterator: AsyncIteratorProtocol {
-    let element: Element?
-    let isConsumed = ManagedCriticalState<Bool>(false)
+    let pendingElement: ManagedCriticalState<Element?>
+
+    init(element: Element?) {
+      self.pendingElement = ManagedCriticalState(element)
+    }
 
     public mutating func next() async -> Element? {
-      guard !Task.isCancelled else { return nil }
-
-      let shouldEarlyReturn = self.isConsumed.withCriticalRegion { isConsumed -> Bool in
-        if !isConsumed {
-          isConsumed = true
-          return false
-        }
-        return true
+      self.pendingElement.withCriticalRegion { pendingElement in
+        defer { pendingElement = nil }
+        return Task.isCancelled ? nil : pendingElement
       }
-
-      if shouldEarlyReturn { return nil }
-
-      return self.element
     }
   }
 }

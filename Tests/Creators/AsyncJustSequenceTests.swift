@@ -9,6 +9,19 @@
 import XCTest
 
 final class AsyncJustSequenceTests: XCTestCase {
+  func test_iterator_copies_share_consumption_but_new_iterators_are_independent() async {
+    let sequence = AsyncJustSequence(42)
+    var first = sequence.makeAsyncIterator()
+    var copy = first
+    var independent = sequence.makeAsyncIterator()
+    let firstValue = await first.next()
+    let copiedValue = await copy.next()
+    let independentValue = await independent.next()
+    XCTAssertEqual(firstValue, 42)
+    XCTAssertNil(copiedValue)
+    XCTAssertEqual(independentValue, 42)
+  }
+
   func test_AsyncJustSequence_outputs_expected_element_and_finishes() async {
     var receivedResult = [Int]()
 
