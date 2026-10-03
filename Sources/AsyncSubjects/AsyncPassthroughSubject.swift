@@ -8,6 +8,7 @@
 /// An `AsyncPassthroughSubject` is an async sequence in which one can send values over time.
 /// When the `AsyncPassthroughSubject` is terminated, new consumers will
 /// immediately resume with this termination.
+/// The first termination is permanent; subsequent values and termination are ignored.
 ///
 /// ```
 /// let passthrough = AsyncPassthroughSubject<Int>()
@@ -54,6 +55,7 @@ public final class AsyncPassthroughSubject<Element: Sendable>: AsyncSubject {
   /// - Parameter element: the value to send
   public func send(_ element: Element) {
     let shouldDrain = self.state.withCriticalRegion { state in
+      guard state.terminalState == nil else { return false }
       let channels = Array(state.channels.values)
       return state.deliveries.enqueue {
         for channel in channels {
@@ -68,6 +70,7 @@ public final class AsyncPassthroughSubject<Element: Sendable>: AsyncSubject {
   /// - Parameter termination: The termination to finish the subject
   public func send(_ termination: Termination<Failure>) {
     let shouldDrain = self.state.withCriticalRegion { state in
+      guard state.terminalState == nil else { return false }
       state.terminalState = termination
       let channels = Array(state.channels.values)
       state.channels.removeAll()

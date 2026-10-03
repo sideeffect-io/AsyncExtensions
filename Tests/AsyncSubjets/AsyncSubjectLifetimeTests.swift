@@ -8,6 +8,41 @@ private final class LifetimePayload: Sendable {
 }
 
 final class AsyncSubjectLifetimeTests: XCTestCase {
+  func test_terminated_subjects_do_not_retain_new_values() {
+    assertTerminatedValueReleased(AsyncPassthroughSubject<LifetimePayload>())
+    assertTerminatedValueReleased(AsyncCurrentValueSubject(LifetimePayload {}))
+    assertTerminatedValueReleased(AsyncReplaySubject<LifetimePayload>(bufferSize: 2))
+    for termination: Termination<Error> in [.finished, .failure(MockError(code: 1))] {
+      assertTerminatedValueReleased(AsyncThrowingPassthroughSubject<LifetimePayload, Error>(), termination: termination)
+      assertTerminatedValueReleased(AsyncThrowingCurrentValueSubject<LifetimePayload, Error>(LifetimePayload {}), termination: termination)
+      assertTerminatedValueReleased(AsyncThrowingReplaySubject<LifetimePayload, Error>(bufferSize: 2), termination: termination)
+    }
+  }
+
+  private func assertTerminatedValueReleased<S: AsyncSubject>(
+    _ subject: S,
+    termination: Termination<S.Failure> = .finished,
+    file: StaticString = #filePath,
+    line: UInt = #line
+  ) where S.Element == LifetimePayload {
+    subject.send(termination)
+    assertSentValueReleased(subject, file: file, line: line)
+  }
+
+  private func assertSentValueReleased<S: AsyncSubject>(
+    _ subject: S,
+    file: StaticString = #filePath,
+    line: UInt = #line
+  ) where S.Element == LifetimePayload {
+    let released = ManagedCriticalState(false)
+    var payload: LifetimePayload? = LifetimePayload { released.apply(criticalState: true) }
+    subject.send(payload!)
+    payload = nil
+    withExtendedLifetime(subject) {
+      XCTAssertTrue(released.criticalState, "The subject retained an ignored value", file: file, line: line)
+    }
+  }
+
   func test_abandoned_passthrough_iterators_release_their_buffered_values() {
     assertBufferedValueReleased(AsyncPassthroughSubject<LifetimePayload>())
     assertBufferedValueReleased(AsyncThrowingPassthroughSubject<LifetimePayload, Error>())

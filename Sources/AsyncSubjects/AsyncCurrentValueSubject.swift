@@ -5,11 +5,13 @@
 //  Created by Thibault Wittemberg on 07/01/2022.
 //
 
-/// A n`AsyncCurrentValueSubject` is an async sequence in which one can send values over time.
+/// An `AsyncCurrentValueSubject` is an async sequence in which one can send values over time.
 /// The current value is always accessible as an instance variable.
-/// The current value is replayed in any new async for in loops.
+/// The current value is replayed to new consumers while the subject is active.
 /// When the `AsyncCurrentValueSubject` is terminated, new consumers will
 /// immediately resume with this termination.
+/// The first termination is permanent; subsequent values and termination are ignored.
+/// The current value remains the last value accepted before termination.
 /// 
 /// ```
 /// let currentValue = AsyncCurrentValueSubject<Int>(1)
@@ -28,9 +30,9 @@
 ///
 /// .. later in the application flow
 ///
-/// await currentValue.send(2)
+/// currentValue.send(2)
 ///
-/// print(currentValue.element) // will print 2
+/// print(currentValue.value) // will print 2
 /// ```
 public final class AsyncCurrentValueSubject<Element>: AsyncSubject where Element: Sendable {
   public typealias Element = Element
@@ -69,6 +71,7 @@ public final class AsyncCurrentValueSubject<Element>: AsyncSubject where Element
   /// - Parameter element: the value to send
   public func send(_ element: Element) {
     let shouldDrain = self.state.withCriticalRegion { state in
+      guard state.terminalState == nil else { return false }
       state.current = element
       let channels = Array(state.channels.values)
       return state.deliveries.enqueue {
@@ -84,6 +87,7 @@ public final class AsyncCurrentValueSubject<Element>: AsyncSubject where Element
   /// - Parameter termination: The termination to finish the subject.
   public func send(_ termination: Termination<Failure>) {
     let shouldDrain = self.state.withCriticalRegion { state in
+      guard state.terminalState == nil else { return false }
       state.terminalState = termination
       let channels = Array(state.channels.values)
       state.channels.removeAll()

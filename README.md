@@ -114,15 +114,37 @@ AsyncStream)
 Subjects serialize concurrent sends in the order their state lock is acquired. Which producer
 goes first is unspecified, but consumers registered for the same sends receive the same order,
 and termination follows previously accepted values. Current-value and replay state use that
-same order, so consumers that remain subscribed catch up to the stored state.
+same order, so consumers that remain subscribed catch up to the stored state while the subject is active.
+
+The first finish or failure is permanent. Later values, assignments to a current-value subject's
+`value`, and further termination signals are ignored. A current-value subject keeps its last
+accepted value; a replay subject clears its history on termination. Iterators created after
+termination receive only that original finish or failure, without any current value or replayed history.
+
+Registration happens synchronously in `makeAsyncIterator()`. A passthrough iterator receives only
+values accepted after registration. A current-value or replay iterator receives the stored state
+at registration followed by subsequent sends. Replay capacity limits history for new subscribers;
+existing subscribers have unbounded buffers if they consume more slowly than values are produced.
 
 A subscription unregisters when its consuming task is cancelled or its last iterator copy is released. This also removes abandoned consumer buffers after a loop exits early. An active loop still needs an owner: retain and cancel its `Task`, or call `subject.send(.finished)` when the producer ends. Dropping a task handle or capturing an owner weakly does not stop an active loop.
 
-State updates and subscriber registration are synchronous. Delivery runs outside the state lock
+Accepted state updates and subscriber registration are synchronous. Delivery runs outside the state lock
 to allow cancellation handlers to send back into the subject. If another sender is already
 delivering, `send` queues its delivery and returns; it does not wait for consumers to receive
-the value. The active sender drains pending deliveries before returning. A new current-value
-or replay consumer receives the latest stored state, followed by subsequent sends.
+the value. The active sender drains pending deliveries before returning. Stored state can therefore
+lead delivery temporarily. Delivery buffers a value or resumes a waiting iterator; it does not
+wait for the consumer's application code to process the value.
+
+Every change to subjects must pass the complete subject regression set and the full test suite:
+
+| Guarantee | Regression coverage |
+| --- | --- |
+| Atomic registration with values and termination | [Subject registration suites](./Tests/AsyncSubjets/) (`test_subscription_racing_*`) |
+| Cancellation completes, including handlers that send back into the subject | [AsyncSubjectCancellationTests](./Tests/AsyncSubjets/AsyncSubjectCancellationTests.swift) |
+| Shared concurrent order and current-value/replay consistency | [AsyncSubjectConcurrentSendOrderingTests](./Tests/AsyncSubjets/AsyncSubjectConcurrentSendOrderingTests.swift) |
+| Queued sends return, accepted values precede termination, and later sends cannot replace it | [AsyncSubjectQueuedDeliveryTests](./Tests/AsyncSubjets/AsyncSubjectQueuedDeliveryTests.swift) |
+| First termination is permanent, including races, and current value freezes | [AsyncSubjectTerminationTests](./Tests/AsyncSubjets/AsyncSubjectTerminationTests.swift) |
+| Abandoned subscriptions and ignored values release their storage | [AsyncSubjectLifetimeTests](./Tests/AsyncSubjets/AsyncSubjectLifetimeTests.swift) |
 
 ### Combiners
 * [`zip(_:)`](./Sources/Combiners/Zip/AsyncZipSequence.swift): Zips any number of async sequences into arrays of elements

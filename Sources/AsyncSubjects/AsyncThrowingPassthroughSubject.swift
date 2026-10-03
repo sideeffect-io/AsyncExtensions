@@ -8,6 +8,7 @@
 /// An `AsyncThrowingPassthroughSubject` is an async sequence in which one can send values over time.
 /// When the `AsyncThrowingPassthroughSubject` is terminated, new consumers will
 /// immediately resume with this termination, whether it is a finish or a failure.
+/// The first termination is permanent; subsequent values and termination are ignored.
 ///
 /// ```
 /// let passthrough = AsyncThrowingPassthroughSubject<Int, Error>()
@@ -55,6 +56,7 @@ public final class AsyncThrowingPassthroughSubject<Element, Failure: Error>: Asy
   /// - Parameter element: the value to send
   public func send(_ element: Element) {
     let shouldDrain = self.state.withCriticalRegion { state in
+      guard state.terminalState == nil else { return false }
       let channels = Array(state.channels.values)
       return state.deliveries.enqueue {
         for channel in channels {
@@ -69,6 +71,7 @@ public final class AsyncThrowingPassthroughSubject<Element, Failure: Error>: Asy
   /// - Parameter termination: The termination to finish the subject
   public func send(_ termination: Termination<Failure>) {
     let shouldDrain = self.state.withCriticalRegion { state in
+      guard state.terminalState == nil else { return false }
       state.terminalState = termination
       let channels = Array(state.channels.values)
       state.channels.removeAll()
