@@ -9,7 +9,7 @@
 import XCTest
 
 final class AsyncReplaySubjectTests: XCTestCase {
-  func test_send_replays_buffered_elements() {
+  func test_send_replays_buffered_elements() async {
     let exp = expectation(description: "Send has stacked elements in the replay the buffer")
     exp.expectedFulfillmentCount = 2
 
@@ -23,7 +23,7 @@ final class AsyncReplaySubjectTests: XCTestCase {
     sut.send(5)
     sut.send(6)
 
-    Task {
+    let firstConsumer = Task {
       var receivedElements = [Int]()
 
       for await element in sut {
@@ -35,7 +35,7 @@ final class AsyncReplaySubjectTests: XCTestCase {
       }
     }
 
-    Task {
+    let secondConsumer = Task {
       var receivedElements = [Int]()
 
       for await element in sut {
@@ -47,10 +47,14 @@ final class AsyncReplaySubjectTests: XCTestCase {
       }
     }
 
-    waitForExpectations(timeout: 0.5)
+    await fulfillment(of: [exp], timeout: 1)
+    sut.send(.finished)
+    await firstConsumer.value
+    await secondConsumer.value
+
   }
 
-  func test_send_pushes_elements_in_the_subject() {
+  func test_send_pushes_elements_in_the_subject() async {
     let hasReceivedOneElementExpectation = expectation(description: "One element has been iterated in the async sequence")
     hasReceivedOneElementExpectation.expectedFulfillmentCount = 2
 
@@ -63,7 +67,7 @@ final class AsyncReplaySubjectTests: XCTestCase {
 
     sut.send(1)
 
-    Task {
+    let firstConsumer = Task {
       var receivedElements = [Int]()
 
       for await element in sut {
@@ -78,7 +82,7 @@ final class AsyncReplaySubjectTests: XCTestCase {
       }
     }
 
-    Task {
+    let secondConsumer = Task {
       var receivedElements = [Int]()
 
       for await element in sut {
@@ -93,12 +97,16 @@ final class AsyncReplaySubjectTests: XCTestCase {
       }
     }
 
-    wait(for: [hasReceivedOneElementExpectation], timeout: 1)
+    await fulfillment(of: [hasReceivedOneElementExpectation], timeout: 1)
 
     sut.send(2)
     sut.send(3)
 
-    wait(for: [hasReceivedSentElementsExpectation], timeout: 1)
+    await fulfillment(of: [hasReceivedSentElementsExpectation], timeout: 1)
+    sut.send(.finished)
+    await firstConsumer.value
+    await secondConsumer.value
+
   }
 
   func test_sendFinished_ends_the_subject_and_immediately_resumes_futur_consumer() async {

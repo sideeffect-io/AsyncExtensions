@@ -116,6 +116,8 @@ goes first is unspecified, but consumers registered for the same sends receive t
 and termination follows previously accepted values. Current-value and replay state use that
 same order, so consumers that remain subscribed catch up to the stored state.
 
+A subscription unregisters when its consuming task is cancelled or its last iterator copy is released. This also removes abandoned consumer buffers after a loop exits early. An active loop still needs an owner: retain and cancel its `Task`, or call `subject.send(.finished)` when the producer ends. Dropping a task handle or capturing an owner weakly does not stop an active loop.
+
 State updates and subscriber registration are synchronous. Delivery runs outside the state lock
 to allow cancellation handlers to send back into the subject. If another sender is already
 delivering, `send` queues its delivery and returns; it does not wait for consumers to receive

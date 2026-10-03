@@ -139,10 +139,12 @@ public final class AsyncCurrentValueSubject<Element>: AsyncSubject where Element
 
   public struct Iterator: AsyncSubjectIterator {
     var iterator: AsyncBufferedChannel<Element>.Iterator
-    let unregister: @Sendable () -> Void
+    let subscription: SubjectSubscription
 
     init(asyncSubject: AsyncCurrentValueSubject) {
-      (self.iterator, self.unregister) = asyncSubject.handleNewConsumer()
+      let consumer = asyncSubject.handleNewConsumer()
+      self.iterator = consumer.iterator
+      self.subscription = SubjectSubscription(unregister: consumer.unregister)
     }
 
     public var hasBufferedElements: Bool {
@@ -152,8 +154,8 @@ public final class AsyncCurrentValueSubject<Element>: AsyncSubject where Element
     public mutating func next() async -> Element? {
       await withTaskCancellationHandler {
         await self.iterator.next()
-      } onCancel: { [unregister] in
-        unregister()
+      } onCancel: { [subscription] in
+        subscription.unregister()
       }
     }
   }

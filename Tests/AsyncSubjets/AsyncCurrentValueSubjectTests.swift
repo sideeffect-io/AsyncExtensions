@@ -31,7 +31,7 @@ final class AsyncCurrentValueSubjectTests: XCTestCase {
     XCTAssertEqual(received2, 1)
   }
 
-  func test_send_pushes_values_in_the_subject() {
+  func test_send_pushes_values_in_the_subject() async {
     let hasReceivedOneElementExpectation = expectation(description: "One element has been iterated in the async sequence")
     hasReceivedOneElementExpectation.expectedFulfillmentCount = 2
 
@@ -42,7 +42,7 @@ final class AsyncCurrentValueSubjectTests: XCTestCase {
 
     let sut = AsyncCurrentValueSubject<Int>(1)
 
-    Task {
+    let firstConsumer = Task {
       var receivedElements = [Int]()
 
       for await element in sut {
@@ -57,7 +57,7 @@ final class AsyncCurrentValueSubjectTests: XCTestCase {
       }
     }
 
-    Task {
+    let secondConsumer = Task {
       var receivedElements = [Int]()
 
       for await element in sut {
@@ -72,12 +72,16 @@ final class AsyncCurrentValueSubjectTests: XCTestCase {
       }
     }
 
-    wait(for: [hasReceivedOneElementExpectation], timeout: 1)
+    await fulfillment(of: [hasReceivedOneElementExpectation], timeout: 1)
 
     sut.send(2)
     sut.value = 3
 
-    wait(for: [hasReceivedSentElementsExpectation], timeout: 1)
+    await fulfillment(of: [hasReceivedSentElementsExpectation], timeout: 1)
+    sut.send(.finished)
+    await firstConsumer.value
+    await secondConsumer.value
+
   }
 
   func test_sendFinished_ends_the_subject_and_immediately_resumes_futur_consumer() async {
