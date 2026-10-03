@@ -1,4 +1,4 @@
-// swift-tools-version:5.8
+// swift-tools-version:5.9
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -6,10 +6,11 @@ import PackageDescription
 let package = Package(
     name: "AsyncExtensions",
     platforms: [
-            .iOS(.v13),
-            .macOS(.v10_15),
-            .tvOS(.v13),
-            .watchOS(.v6)
+            .iOS("18.0"),
+            .macOS("15.0"),
+            .tvOS("18.0"),
+            .watchOS("11.0"),
+            .visionOS("2.0")
         ],
     products: [
         .library(

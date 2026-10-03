@@ -1,44 +1,33 @@
-import Darwin
+import Synchronization
 
-final class LockedBuffer<State>: ManagedBuffer<State, os_unfair_lock> {
-  deinit {
-    _ = self.withUnsafeMutablePointerToElements { lock in
-      lock.deinitialize(count: 1)
+/// State guarded by a `Mutex`, with reference semantics so that iterators and state machines
+/// can hold it by value and copy it.
+struct ManagedCriticalState<State> {
+  private final class Storage: @unchecked Sendable {
+    let mutex: Mutex<State>
+
+    init(_ initial: State) {
+      mutex = Mutex(initial)
     }
   }
-}
 
-struct ManagedCriticalState<State> {
-  let buffer: ManagedBuffer<State, os_unfair_lock>
+  private let storage: Storage
 
   init(_ initial: State) {
-    buffer = LockedBuffer.create(minimumCapacity: 1) { buffer in
-      buffer.withUnsafeMutablePointerToElements { lock in
-        lock.initialize(to: os_unfair_lock())
-      }
-      return initial
-    }
+    storage = Storage(initial)
   }
 
   @discardableResult
-  func withCriticalRegion<R>(
-    _ critical: (inout State) throws -> R
-  ) rethrows -> R {
-    try buffer.withUnsafeMutablePointers { header, lock in
-      os_unfair_lock_lock(lock)
-      defer { os_unfair_lock_unlock(lock) }
-      return try critical(&header.pointee)
-    }
+  func withCriticalRegion<R>(_ critical: (inout State) throws -> R) rethrows -> R {
+    try storage.mutex.withLock { state in try critical(&state) }
   }
 
   func apply(criticalState newState: State) {
-    self.withCriticalRegion { actual in
-      actual = newState
-    }
+    withCriticalRegion { $0 = newState }
   }
 
   var criticalState: State {
-    self.withCriticalRegion { $0 }
+    withCriticalRegion { $0 }
   }
 }
 
