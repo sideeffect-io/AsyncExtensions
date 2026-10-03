@@ -123,3 +123,9 @@ or replay consumer receives the latest stored state, followed by subsequent send
 * [`switchToLatest()`](./Sources/Operators/AsyncSwitchToLatestSequence.swift): Republishes elements sent by the most recently received `AsyncSequence` when self is an `AsyncSequence` of `AsyncSequence`
 
 More operators and extensions are to come. Pull requests are of course welcome.
+
+## Subscription lifetime
+
+An `AsyncJustSequence` iterator releases its stored value after emitting it. An inner sequence can continue producing values after the object that provided it is released.
+
+Removing an object or sequence from an array does not cancel an existing subscription. Retain the consuming `Task` and cancel it when its owner stops observing; a weak capture of the owner alone does not stop the task.
