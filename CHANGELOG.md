@@ -1,6 +1,7 @@
 **Unreleased:**
 
 - Breaking: use Swift Async Algorithms for `Sequence.async` and two- or three-input `zip`/`merge`, removing import ambiguities. Add the `AsyncAlgorithms` product dependency and import when migrating these APIs. Preserve variadic `zip`/`merge` and the explicit `AsyncLazySequence` constructor.
+- Breaking: rename the buffered Date timer from `AsyncTimerSequence` to `AsyncBufferedTimerSequence` to avoid ambiguity with Apple's clock-based timer.
 - SwiftPM: require Swift 5.8 or later for the Swift Async Algorithms test dependency.
 
 - SwitchToLatest: finish cancelled collection while the latest channel or outer sequence remains open, and discard late producer results (https://github.com/sideeffect-io/AsyncExtensions/issues/53).
