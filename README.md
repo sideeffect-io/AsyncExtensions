@@ -66,6 +66,8 @@ Variadic inputs share one concrete sequence type. Use `eraseToAnyAsyncSequence()
 
 The `AsyncLazySequence(sequence)` constructor remains available when you only need AsyncExtensions. The `.async` extension is supplied exclusively by AsyncAlgorithms.
 
+Rename uses of AsyncExtensions' `AsyncTimerSequence` to `AsyncBufferedTimerSequence`. It retains the buffered `Date` values and `DispatchTimeInterval` initializer. The unqualified `AsyncTimerSequence` name now refers to Apple's clock-based timer when both modules are imported.
+
 ## Features
 
 ### Channels
@@ -104,7 +106,7 @@ or replay consumer receives the latest stored state, followed by subsequent send
 * [AsyncJustSequence](./Sources/Creators/AsyncJustSequence.swift): Creates an `AsyncSequence` that emits an element an finishes
 * [AsyncThrowingJustSequence](./Sources/Creators/AsyncThrowingJustSequence.swift): Creates an `AsyncSequence` that emits an elements and finishes bases on a throwing closure
 * [AsyncLazySequence](./Sources/Creators/AsyncLazySequence.swift): Creates an async sequence from an explicit synchronous sequence
-* [AsyncTimerSequence](./Sources/Creators/AsyncTimerSequence.swift): Creates an `AsyncSequence` that emits a date value periodically
+* [AsyncBufferedTimerSequence](./Sources/Creators/AsyncBufferedTimerSequence.swift): Creates an `AsyncSequence` that buffers date values emitted periodically
 * [AsyncStream Pipe](./Sources/Creators/AsyncStream+Pipe.swift): Creates an AsyncStream and returns a tuple standing for its inputs and outputs
 
 ### Operators

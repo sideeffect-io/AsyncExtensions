@@ -1,5 +1,5 @@
 //
-//  AsyncSequences+Timer.swift
+//  AsyncBufferedTimerSequence.swift
 //  
 //
 //  Created by Thibault Wittemberg on 04/03/2022.
@@ -20,11 +20,11 @@ private extension DispatchTimeInterval {
   }
 }
 
-/// `AsyncTimerSequence`is an async sequence that repeatedly emits the current date on the given interval, with the given priority.
+/// `AsyncBufferedTimerSequence` is an async sequence that repeatedly emits the current date on the given interval, with the given priority.
 /// The Dates will be buffered until the consumers are available to process them.
 ///
 /// ```
-/// let timer = AsyncTimerSequence(priority: .high, every: .seconds(1))
+/// let timer = AsyncBufferedTimerSequence(priority: .high, every: .seconds(1))
 ///
 /// Task {
 ///   for try await element in timer {
@@ -39,7 +39,7 @@ private extension DispatchTimeInterval {
 /// // 2022-03-06 19:31:25 +0000
 /// // 2022-03-06 19:31:26 +0000
 /// ```
-public struct AsyncTimerSequence: AsyncSequence {
+public struct AsyncBufferedTimerSequence: AsyncSequence {
   public typealias Element = Date
   public typealias AsyncIterator = Iterator
 

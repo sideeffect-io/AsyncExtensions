@@ -67,4 +67,10 @@ final class AsyncAlgorithmsCompatibilityTests: XCTestCase {
     }
     XCTAssertEqual(received.sorted(), [1, 2, 3, 4, 5, 6, 7, 8])
   }
+
+  @available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
+  func test_buffered_and_clock_timer_types_coexist() {
+    let _: AsyncBufferedTimerSequence = AsyncBufferedTimerSequence(every: .seconds(1))
+    let _: AsyncTimerSequence<SuspendingClock> = .repeating(every: .seconds(1))
+  }
 }
