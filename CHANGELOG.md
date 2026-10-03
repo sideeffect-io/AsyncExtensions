@@ -1,5 +1,6 @@
 **Unreleased:**
 
+- SwitchToLatest: finish cancelled collection while the latest channel or outer sequence remains open, and discard late producer results (https://github.com/sideeffect-io/AsyncExtensions/issues/53).
 - Subjects: fix a deadlock when sending values or termination concurrently with consumer cancellation (https://github.com/sideeffect-io/AsyncExtensions/issues/52).
 - Multicast: preserve upstream element order and prevent termination from overtaking values when consumers advance concurrently.
 
