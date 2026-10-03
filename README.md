@@ -124,6 +124,24 @@ or replay consumer receives the latest stored state, followed by subsequent send
 
 More operators and extensions are to come. Pull requests are of course welcome.
 
+## Asynchronous single-value transformations
+
+`AsyncJustSequence(factory:)` creates its value lazily when an iterator first advances. The factory runs once per independent iterator; returning `nil` finishes without emitting a value. Cancellation before iteration skips the factory, and cancellation during the factory discards its eventual result.
+
+The scalar `flatMapLatest` overload accepts a nonthrowing async transformation. It cancels the previous transformation when a new input arrives. When both the upstream and transformation are nonthrowing, collection needs no `try`:
+
+```swift
+let doubled = AsyncJustSequence(21).flatMapLatest { value async -> Int in
+  value * 2
+}
+
+for await value in doubled {
+  print(value) // 42
+}
+```
+
+A transformation can return `Result` to represent a failure as an ordinary element and keep collecting later inputs. A throwing upstream still requires `try` and propagates its error; the nonthrowing transformation does not suppress upstream failures.
+
 ## Subscription lifetime
 
 An `AsyncJustSequence` iterator releases its stored value after emitting it. An inner sequence can continue producing values after the object that provided it is released.

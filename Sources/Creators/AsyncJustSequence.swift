@@ -18,31 +18,50 @@ public struct AsyncJustSequence<Element>: AsyncSequence {
   public typealias Element = Element
   public typealias AsyncIterator = Iterator
 
-  let element: Element?
+  enum Source {
+    case value(Element?)
+    case factory(@Sendable () async -> Element?)
+  }
+
+  let source: Source
 
   public init(_ element: Element?) {
-    self.element = element
+    self.source = .value(element)
+  }
+
+  /// Creates a single value lazily for each iterator. Returning nil finishes without a value.
+  public init(factory: @Sendable @escaping () async -> Element?) {
+    self.source = .factory(factory)
   }
 
   public func makeAsyncIterator() -> AsyncIterator {
-    Iterator(element: self.element)
+    Iterator(source: self.source)
   }
 
   public struct Iterator: AsyncIteratorProtocol {
-    let pendingElement: ManagedCriticalState<Element?>
+    let pendingSource: ManagedCriticalState<Source?>
 
-    init(element: Element?) {
-      self.pendingElement = ManagedCriticalState(element)
+    init(source: Source) {
+      self.pendingSource = ManagedCriticalState(source)
     }
 
     public mutating func next() async -> Element? {
-      self.pendingElement.withCriticalRegion { pendingElement in
-        defer { pendingElement = nil }
-        return Task.isCancelled ? nil : pendingElement
+      let source = self.pendingSource.withCriticalRegion { pendingSource -> Source? in
+        defer { pendingSource = nil }
+        return pendingSource
+      }
+      guard !Task.isCancelled, let source = source else { return nil }
+      switch source {
+        case .value(let element):
+          return element
+        case .factory(let factory):
+          let element = await factory()
+          return Task.isCancelled ? nil : element
       }
     }
   }
 }
 
 extension AsyncJustSequence: Sendable where Element: Sendable {}
+extension AsyncJustSequence.Source: Sendable where Element: Sendable {}
 extension AsyncJustSequence.Iterator: Sendable where Element: Sendable {}
