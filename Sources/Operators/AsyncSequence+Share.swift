@@ -7,6 +7,8 @@
 
 public extension AsyncSequence {
   /// Shares the output of an upstream async sequence with multiple client loops.
+  /// Store and reuse the returned instance for all consumers; each call to `share()` creates
+  /// a separate upstream iterator.
   ///
   ///  - Tip: ``share()`` is effectively a shortcut for ``multicast()`` using a ``AsyncThrowingPassthroughSubject``
   ///  stream, with an implicit ``autoconnect()``.
