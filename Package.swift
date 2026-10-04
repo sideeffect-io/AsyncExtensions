@@ -1,4 +1,4 @@
-// swift-tools-version:5.8
+// swift-tools-version:6.1
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -6,10 +6,10 @@ import PackageDescription
 let package = Package(
     name: "AsyncExtensions",
     platforms: [
-            .iOS(.v13),
-            .macOS(.v10_15),
-            .tvOS(.v13),
-            .watchOS(.v6)
+            .iOS(.v18),
+            .macOS(.v15),
+            .tvOS(.v18),
+            .watchOS(.v11)
         ],
     products: [
         .library(
@@ -40,5 +40,6 @@ let package = Package(
                 .product(name: "AsyncAlgorithms", package: "swift-async-algorithms")
             ],
             path: "Tests"),
-    ]
+    ],
+    swiftLanguageModes: [.v5]
 )

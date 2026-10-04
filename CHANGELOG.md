@@ -6,7 +6,8 @@
 
 - Breaking: use Swift Async Algorithms for `Sequence.async` and two- or three-input `zip`/`merge`, removing import ambiguities. Add the `AsyncAlgorithms` product dependency and import when migrating these APIs. Preserve variadic `zip`/`merge` and the explicit `AsyncLazySequence` constructor.
 - Breaking: rename the buffered Date timer from `AsyncTimerSequence` to `AsyncBufferedTimerSequence` to avoid ambiguity with Apple's clock-based timer.
-- SwiftPM: require Swift 5.8 or later for the Swift Async Algorithms test dependency.
+- Breaking: require a Swift 6.1 or later compiler and iOS/tvOS 18, macOS 15, or watchOS 11. Preserve Swift 5 language mode. Swift 6.0.3 on Linux crashes when compiling generic `Mutex` storage in debug builds.
+- Linux: use `Synchronization.Mutex` for shared state, remove the unused Combine test import, and add Ubuntu CI with Swift 6.1.3 and 6.4.0.
 
 - SwitchToLatest: finish cancelled collection while the latest channel or outer sequence remains open, and discard late producer results (https://github.com/sideeffect-io/AsyncExtensions/issues/53).
 - Subjects: fix a deadlock when sending values or termination concurrently with consumer cancellation (https://github.com/sideeffect-io/AsyncExtensions/issues/52).

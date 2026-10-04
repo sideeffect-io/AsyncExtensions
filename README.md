@@ -19,7 +19,7 @@ An async sequence produces values over time. You read those values with `for awa
 
 ## Installation
 
-The package manifest requires Swift 5.8 or later and declares support for iOS 13, macOS 10.15, tvOS 13, and watchOS 6 or later. Resolved dependencies may require a newer Swift toolchain.
+The package requires a Swift 6.1 or later compiler and uses Swift 5 language mode. It supports Linux and iOS 18, macOS 15, tvOS 18, and watchOS 11 or later. Its shared-state synchronization uses `Synchronization.Mutex` on every platform.
 
 ### In Xcode
 
@@ -35,12 +35,12 @@ Add `import AsyncExtensions` to the Swift files that use the library. See Apple'
 Add the package to `dependencies`, then add its library product to the target that uses it. For example, a command-line app can use this `Package.swift`:
 
 ```swift
-// swift-tools-version: 5.8
+// swift-tools-version: 6.1
 import PackageDescription
 
 let package = Package(
     name: "MyApp",
-    platforms: [.macOS(.v10_15)],
+    platforms: [.macOS(.v15)],
     dependencies: [
         .package(
             url: "https://github.com/sideeffect-io/AsyncExtensions.git",
@@ -59,6 +59,17 @@ let package = Package(
 ```
 
 Put your app's code in `Sources/MyApp/main.swift`, import `AsyncExtensions`, and run it with `swift run`. For a library target, add the same product dependency to your existing `.target(...)`. SwiftPM's [package manifest reference](https://docs.swift.org/package-manager/PackageDescription/PackageDescription.html) describes these dependency declarations.
+
+### On Linux
+
+Install a [Swift toolchain for Linux](https://www.swift.org/install/linux/), then build and test this package with:
+
+```sh
+swift build -c release
+swift test
+```
+
+Linux CI runs the full test suite on Ubuntu 22.04 with Swift 6.1.3 and 6.4.0. The Apple deployment versions in `Package.swift` do not restrict Linux builds.
 
 ## A first example
 
