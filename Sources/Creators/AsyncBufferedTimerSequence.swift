@@ -6,6 +6,7 @@
 //
 
 @preconcurrency import Foundation
+import Dispatch
 
 private extension DispatchTimeInterval {
   var nanoseconds: UInt64 {

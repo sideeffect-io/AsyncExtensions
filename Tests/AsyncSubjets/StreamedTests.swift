@@ -6,7 +6,6 @@
 //
 
 import AsyncExtensions
-import Combine
 import XCTest
 
 final class StreamedTests: XCTestCase {

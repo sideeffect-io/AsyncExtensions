@@ -1,6 +1,6 @@
 name: Build and test
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
   Build:
@@ -9,7 +9,7 @@ jobs:
 
     steps:
       - name: Checkout branch
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Build
         run: swift build -Xswiftc -suppress-warnings
 
@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - name: Checkout branch
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Test
         run: swift test --enable-code-coverage -Xswiftc -suppress-warnings
       - name: Generate coverage
@@ -29,3 +29,21 @@ jobs:
         uses: codecov/codecov-action@v3
         with:
           files: ${{join(fromJSON(steps.coverage-files.outputs.files), ',')}}
+
+  Linux:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        swift: ["6.1.3", "6.4.0"]
+    container: swift:${{ matrix.swift }}-jammy
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+      - name: Show Swift version
+        run: swift --version
+      - name: Build release
+        run: swift build -c release
+      - name: Test
+        run: swift test
